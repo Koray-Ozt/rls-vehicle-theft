@@ -16,7 +16,7 @@ This mod is an add-on for RLS Career Overhaul. It does **not** include RLS and d
 
 At runtime the mod calls RLS's career, garage, police, parking, marketplace, payment, skills and milestone systems. The Underground phone app also loads two files from inside RLS: the negotiation screen (`components/negotiation/NegotiationChatWindow.vue`) and the phone screen helper (`composables/usePhoneScreen.js`). An RLS update that renames or moves these may break the mod until it is updated.
 
-The mod has no other dependencies and does not modify any RLS or BeamNG file.
+The mod has no other dependencies and does not edit any RLS or BeamNG file on disk. It ships one patched copy of an RLS UI file (see below) that BeamNG's virtual file system loads in place of the original.
 
 ## Installation
 
@@ -53,7 +53,7 @@ To change the key, open BeamNG's controls settings and look for **RLS Vehicle Th
 | Repaint it | Garage computer → RLS's painting option |
 | Sell it for parts instead | Garage computer → select the car → **Strip for parts** |
 | List, take offers, negotiate, sell | **Underground** phone app |
-| Vehicle Theft skill level and perks | RLS **Skills** page → **Vehicle Theft**, or the top of the **Underground** phone app |
+| Vehicle Theft skill level and perks | RLS **Skills** page or the phone's **Skills** app → **Vehicle Theft**, or the top of the **Underground** app |
 | Theft milestones | RLS **Milestones** page (General filter) |
 
 ### At a glance
@@ -81,7 +81,7 @@ Negotiation uses the RLS negotiation screen. Each counter-offer costs the buyer 
 
 ## Vehicle Theft skill and milestones
 
-**Vehicle Theft** is an RLS career skill with 50 levels on the same XP curve as RLS's other skills. It appears on RLS's Skills page. The phone's Skills app only lists a fixed set of skills inside RLS, so this mod shows your Vehicle Theft level and XP at the top of the **Underground** app instead. RLS adds its usual level milestones for it.
+**Vehicle Theft** is an RLS career skill with 50 levels on the same XP curve as RLS's other skills. It appears on RLS's Skills page and in the phone's Skills app, and the **Underground** app shows your level and XP at the top. RLS adds its usual level milestones for it.
 
 | Action | XP |
 |---|---|
@@ -136,6 +136,7 @@ Everything lives in this mod's ZIP; no RLS file is edited. BeamNG merges all mod
 | `ui/images/rls_vehicle_theft/underground.png` | The Underground app icon |
 | `gameplay/overhaul/ui/routes/rls-theft-routes.json` | The ignition screen's UI route |
 | `lua/ge/extensions/core/input/actions/rls_vehicle_theft.json`, `settings/inputmaps/keyboard_rls_vehicle_theft.json` | The **Ctrl + Shift + J** action and binding |
+| `ui/ui-vue/mods/rls_career_overhaul/overhaul/modules/career/composables/usePhoneSkillsData.js` | A copy of RLS's phone Skills data file (AGPL-3.0, header kept) with Vehicle Theft added to its fixed list of visible skills. Three added lines; an RLS update to this file is overridden by it |
 | `scripts/rls_vehicle_theft/modScript.lua` | Loads the extension |
 
 Where the mod changes RLS behaviour (blocking official sales of stolen cars, suspending test drives, adding the skill to the Skills page), it wraps the RLS function while the game runs and restores it when the extension unloads.
@@ -154,7 +155,7 @@ This mod is released under the [MIT License](LICENSE). The license covers this m
 
 ## Changes
 
-- **0.7.1**: Level and XP of the Vehicle Theft skill shown in the Underground app (the phone's Skills app cannot list it). Abandon a stolen car by walking away from it (no fine). Strip a stored car for parts at the garage computer. Camera fines go to the original owner while the stolen car keeps its plate. A fully disguised car is no longer seized when RLS arrests you for an unrelated offence. The controls menu now describes the key's current uses (parked, moving and dealership cars, storing).
+- **0.7.1**: Vehicle Theft now appears in the phone's Skills app (patched copy of RLS's `usePhoneSkillsData.js`) and its level and XP show in the Underground app. Abandon a stolen car by walking away from it (no fine). Strip a stored car for parts at the garage computer. Camera fines go to the original owner while the stolen car keeps its plate. A fully disguised car is no longer seized when RLS arrests you for an unrelated offence. The controls menu now describes the key's current uses (parked, moving and dealership cars, storing).
 - **0.7.0**: Vehicle Theft skill (50 levels, XP for each step of a theft, perks), six theft milestones, the skill on RLS's Skills page. The Underground app's countdowns keep running in every phase.
 - **0.6.1**: Carjack civilian cars driving below about 30 km/h.
 - **0.6.0**: Underground phone app with listings, timed offers from different buyer types, and negotiation. Replaces the single offer at the garage computer.
