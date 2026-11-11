@@ -28,6 +28,40 @@ The mod has no other dependencies and does not modify any RLS or BeamNG file.
 
 To build the ZIP yourself, compress the folders `gameplay`, `lua`, `scripts`, `settings` and `ui` so they sit at the root of the archive.
 
+## Quick reference
+
+### Controls
+
+| Key | When | What it does |
+|---|---|---|
+| **Ctrl + Shift + J** | On foot, at the door of a parked civilian car | Start taking it. Stay beside the car for 4 seconds. |
+| **Ctrl + Shift + J** | On foot, next to a civilian car driving below about 30 km/h | Flag it down. The driver stops; stay next to the car for 2.5 seconds. |
+| **Ctrl + Shift + J** | Inspecting a dealership car, or driving it on a test drive | Take that car. |
+| **Ctrl + Shift + J** | Driving the stolen car, parked inside a garage you own | Store it. Getting out inside the garage stores it too. |
+| **Space** or **Enter** | Ignition Bypass screen | **Begin**, then **Lock signal** when the white marker is in the green zone. The buttons work with the mouse as well. |
+| **Cancel** button | Ignition Bypass screen | Give up the attempt. |
+| Phone **Back** | Underground app | Leave a negotiation; press again to close the app. |
+
+To change the key, open BeamNG's controls settings and look for **RLS Vehicle Theft: Take or store vehicle** in the Gameplay category.
+
+### What to install and where to go
+
+| What | Where |
+|---|---|
+| **Underground** phone app (required for selling) | Phone → **App Store** → **Underground** (Vehicles category). Install it once per career. |
+| Change the stolen car's identity | Garage computer → select the car → **Change vehicle identity** |
+| Repaint it | Garage computer → RLS's painting option |
+| List, take offers, negotiate, sell | **Underground** phone app |
+| Vehicle Theft skill level and perks | RLS **Skills** page, or the phone's **Skills** app → **Vehicle Theft** |
+| Theft milestones | RLS **Milestones** page (General filter) |
+
+### At a glance
+
+1. Take a car (**Ctrl + Shift + J**) and start it (ignition bypass if the engine is off).
+2. Lose the police, then park inside a garage you own and get out.
+3. At the garage computer: **Change vehicle identity**, and repaint it.
+4. In the **Underground** app: set a price, **List for sale**, then accept or negotiate an offer.
+
 ## Playing
 
 1. **Take a vehicle.** In RLS Career, walk up to the door of a parked or stopped civilian vehicle, press **Ctrl + Shift + J** and stay beside it for 4 seconds. You can also carjack a civilian car that is still driving below about 30 km/h: step next to it (within about 6 m) and press the shortcut. The driver brakes to a stop; stay next to the car for 2.5 seconds and it is yours. Walk away first and the car drives off again. The same shortcut works while inspecting a dealership vehicle or driving it during a dealership test drive.
@@ -114,6 +148,7 @@ This mod is released under the [MIT License](LICENSE). The license covers this m
 
 ## Changes
 
+- **Unreleased**: The controls menu now describes the key's current uses (parked, moving and dealership cars, storing).
 - **0.7.0**: Vehicle Theft skill (50 levels, XP for each step of a theft, perks), six theft milestones, the skill on RLS's Skills page. The Underground app's countdowns keep running in every phase.
 - **0.6.1**: Carjack civilian cars driving below about 30 km/h.
 - **0.6.0**: Underground phone app with listings, timed offers from different buyer types, and negotiation. Replaces the single offer at the garage computer.

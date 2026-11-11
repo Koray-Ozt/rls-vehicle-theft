@@ -5,6 +5,6 @@
     "actionMap": "Global",
     "onDown": "if rlsVehicleTheft then rlsVehicleTheft.attempt() end",
     "title": "RLS Vehicle Theft: Take or store vehicle",
-    "desc": "Take an inspected dealership car or a stopped traffic vehicle. Use again to store the stolen car at an owned garage."
+    "desc": "Take a parked car, a civilian car driving below about 30 km/h, or the dealership car you are inspecting or test-driving. Press again while driving the stolen car inside an owned garage to store it."
   }
 }
