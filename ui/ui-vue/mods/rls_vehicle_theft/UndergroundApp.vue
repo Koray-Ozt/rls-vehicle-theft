@@ -49,6 +49,14 @@
         <div v-else-if="!state.available" class="ug-empty">Only available in an RLS career.</div>
 
         <template v-else>
+          <section v-if="state.skill" class="ug-skill">
+            <div class="ug-skill-row">
+              <strong>Vehicle Theft · LV {{ state.skill.level }}</strong>
+              <span>{{ state.skill.max ? 'MAX' : `${state.skill.xp} / ${state.skill.to} XP` }}</span>
+            </div>
+            <div class="ug-skill-bar"><div :style="{ width: skillPercent + '%' }"></div></div>
+          </section>
+
           <section v-if="state.result" class="ug-result" :class="state.result.kind">
             <strong v-if="state.result.kind === 'sold'">Sold for {{ money(state.result.price) }}</strong>
             <strong v-else>Police raided the handover</strong>
@@ -170,6 +178,12 @@ const vehicle = computed(() => state.value?.vehicle || null)
 const offers = computed(() => state.value?.offers || [])
 const negotiation = computed(() => state.value?.negotiation || null)
 
+const skillPercent = computed(() => {
+  const s = state.value?.skill
+  if (!s || s.max) return 100
+  const span = Number(s.to) - Number(s.from)
+  return span > 0 ? Math.max(0, Math.min(100, ((Number(s.xp) - Number(s.from)) / span) * 100)) : 0
+})
 const money = value => `$${Math.round(Number(value) || 0).toLocaleString()}`
 const clock = seconds => {
   const s = Math.max(0, Math.round(Number(seconds) || 0))
@@ -275,6 +289,10 @@ onUnmounted(() => {
   min-height: 0;
 }
 
+.ug-skill { margin-bottom: 0.6rem; }
+.ug-skill-row { display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 0.25rem; }
+.ug-skill-bar { height: 0.3rem; border-radius: 0.2rem; background: rgba(255, 255, 255, 0.15); overflow: hidden; }
+.ug-skill-bar > div { height: 100%; background: #e85d04; }
 .ug-head {
   display: flex;
   align-items: center;

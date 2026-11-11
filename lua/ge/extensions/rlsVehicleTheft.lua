@@ -110,6 +110,13 @@ local function theftLevel()
   return level
 end
 
+-- Level, XP and the XP span of the current level, for the skill card in the Underground app.
+local function skillProgress()
+  local level, xp = theftLevel(), skillXp()
+  local from, to = skillCurve[level] or 0, skillCurve[level + 1]
+  return {level = level, xp = math.floor(xp), from = from, to = to, max = to == nil}
+end
+
 local function perk(key, default)
   local level, value = theftLevel(), default
   for _, tier in ipairs(perkTiers[key]) do
@@ -1249,6 +1256,7 @@ end
 function M.getUndergroundState()
   if not load() then return {available = false} end
   local view = {available = true, result = lastResult, negotiation = negotiationView(), offers = {}}
+  view.skill = skillProgress()
   local case = state.case
   if not case then return view end
   local now = os.time()
