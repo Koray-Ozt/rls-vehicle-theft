@@ -80,6 +80,7 @@
 
             <p v-if="vehicle.phase === 'transit'" class="ug-step">Store it first: park inside a garage you own and get out.</p>
             <p v-else-if="vehicle.phase === 'stored'" class="ug-step">Change its identity at the garage computer before selling.</p>
+            <p v-else-if="vehicle.phase === 'chopping'" class="ug-step">Being stripped for parts: {{ clock(vehicle.workshopRemaining) }} left.</p>
             <p v-else-if="vehicle.phase === 'workshop'" class="ug-step">Identity change in progress: {{ clock(vehicle.workshopRemaining) }} left.</p>
 
             <template v-else-if="vehicle.phase === 'ready'">

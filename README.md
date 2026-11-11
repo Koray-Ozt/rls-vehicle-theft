@@ -51,6 +51,7 @@ To change the key, open BeamNG's controls settings and look for **RLS Vehicle Th
 | **Underground** phone app (required for selling) | Phone → **App Store** → **Underground** (Vehicles category). Install it once per career. |
 | Change the stolen car's identity | Garage computer → select the car → **Change vehicle identity** |
 | Repaint it | Garage computer → RLS's painting option |
+| Sell it for parts instead | Garage computer → select the car → **Strip for parts** |
 | List, take offers, negotiate, sell | **Underground** phone app |
 | Vehicle Theft skill level and perks | RLS **Skills** page, or the phone's **Skills** app → **Vehicle Theft** |
 | Theft milestones | RLS **Milestones** page (General filter) |
@@ -70,6 +71,8 @@ To change the key, open BeamNG's controls settings and look for **RLS Vehicle Th
 4. **Change its identity and repaint it.** At the garage computer, select the vehicle and choose **Change vehicle identity**. This also gives it a new plate. The work costs 23% of the car's value (at least $1,200) and takes 150 seconds; Vehicle Theft perks make it cheaper and faster. The Underground app counts down the remaining time. Repaint it with the RLS painting option on the same computer: the theft report describes the colour it had when you stored it.
 5. **Sell it from the Underground phone app.** Install **Underground** from the phone's App Store once. When the identity change is done, open the app, set an asking price and choose **List for sale**. Buyers send offers over time; each offer expires after a few minutes, and up to four can wait at once. For each offer choose **Accept**, **Decline** or **Negotiate**. You can sell from anywhere; the vehicle is handed over and the money is paid at once.
 
+**Or ditch it, or chop it.** If you do not want to keep a stolen car, there are two ways out. Walk about 120 m away from a car you have not stored, with no police on you, and you leave it behind: no theft fine, no payout, and the car is towed. Once a car is stored, you can skip the identity change and choose **Strip for parts** at the garage computer. It takes 90 seconds, needs no repaint, has no raid risk and pays about 34% of the car's value (Vehicle Theft perks raise it by up to 15%), less than an Underground sale but with no identity fee.
+
 ### Asking price and negotiation
 
 The app shows the vehicle's underground value: about 61% of its normal sell value, or 54% while the theft is still fresh (Vehicle Theft perks raise it by up to 15%). Listing below that value brings offers sooner and closer to your price; listing well above it makes buyers rarer and keeps their offers near the underground value. This follows the RLS marketplace.
@@ -88,6 +91,7 @@ Negotiation uses the RLS negotiation screen. Each counter-offer costs the buyer 
 | Store it in your garage | 10 |
 | Lose the police in a stolen car (first three times per car) | 10 |
 | Finish the identity change | 5 |
+| Strip a car for parts | 10 + 1 per $500 of the price (at most +30) |
 | Underground sale | 15 + 1 per $400 of the price (at most +45), +5 when negotiated above the opening offer |
 
 A full theft usually earns 60–100 XP: level 5 takes roughly 15–20 thefts and level 10 roughly 60.
@@ -150,7 +154,7 @@ This mod is released under the [MIT License](LICENSE). The license covers this m
 
 ## Changes
 
-- **0.7.1**: Camera fines go to the original owner while the stolen car keeps its plate. A fully disguised car is no longer seized when RLS arrests you for an unrelated offence. The controls menu now describes the key's current uses (parked, moving and dealership cars, storing).
+- **0.7.1**: Abandon a stolen car by walking away from it (no fine). Strip a stored car for parts at the garage computer. Camera fines go to the original owner while the stolen car keeps its plate. A fully disguised car is no longer seized when RLS arrests you for an unrelated offence. The controls menu now describes the key's current uses (parked, moving and dealership cars, storing).
 - **0.7.0**: Vehicle Theft skill (50 levels, XP for each step of a theft, perks), six theft milestones, the skill on RLS's Skills page. The Underground app's countdowns keep running in every phase.
 - **0.6.1**: Carjack civilian cars driving below about 30 km/h.
 - **0.6.0**: Underground phone app with listings, timed offers from different buyer types, and negotiation. Replaces the single offer at the garage computer.

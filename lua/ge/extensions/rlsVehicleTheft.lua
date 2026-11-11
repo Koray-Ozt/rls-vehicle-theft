@@ -124,6 +124,7 @@ local function stats()
   local s = state.stats
   s.stolen, s.carjacked, s.cleanBypass = s.stolen or 0, s.carjacked or 0, s.cleanBypass or 0
   s.sold, s.revenue, s.evaded = s.sold or 0, s.revenue or 0, s.evaded or 0
+  s.chopped = s.chopped or 0
   return s
 end
 
@@ -1026,6 +1027,60 @@ local function startIdentity(case)
   notify(string.format("Identity change started. Cost: %s. Ready in %d seconds.", money(fee), seconds))
 end
 
+-- Chop shop: a stored car can be stripped for parts instead of disguised. It takes less time and no
+-- identity change or repaint, and nothing is handed to a buyer, so there is no raid. It pays less.
+local chopSeconds = 90
+local chopRate = 0.34
+
+local function chopValue(case)
+  return math.floor(currentValue(case) * chopRate * perk("fenceValue", 1))
+end
+
+local function startChop(case)
+  if case.phase ~= "stored" or case.seizure then return end
+  case.phase, case.readyAt = "chopping", os.time() + chopSeconds
+  save()
+  notify(string.format("The car is being stripped for parts. The chop shop pays about %s in %d seconds.",
+    money(chopValue(case)), chopSeconds))
+end
+
+local function finishChop(case)
+  local price = chopValue(case)
+  exitVehicle(inventory().getVehicleIdFromInventoryId(case.inventoryId))
+  if inventory().removeVehicle(case.inventoryId) == false then return end
+  if case.source == "testDrive" then
+    state.citations[#state.citations + 1] = {due = os.time() + 150, amount = fineFor(case)}
+  end
+  state.case, liveId = nil, nil
+  overhaul_career_economy_payment.reward({money = {amount = price}},
+    {label = "Chop shop parts sale", category = "sale", tags = {"vehicleTheft"}}, true)
+  save()
+  notify("The car was stripped and sold for parts. Payment received: " .. money(price))
+  count("chopped")
+  count("revenue", price)
+  grantXp(10 + math.min(30, math.floor(price / 500)), "Parts sold to a chop shop")
+end
+
+-- Abandoning: walk away from a stolen car you have not stored. Beyond this distance, with no pursuit on
+-- you, the car is left behind: no theft fine, but also no payout.
+local abandonDistance = 120
+
+local function checkAbandon(case)
+  if case.phase ~= "transit" or not liveId or be:getPlayerVehicleID(0) == liveId then return false end
+  local vehicle = getObjectByID(liveId)
+  local player = walkingPlayer()
+  if not vehicle or not player or distance(vehicle, player) < abandonDistance then return false end
+  local pursuit = overhaul_integration_services_police.getPursuitData(liveId)
+  if pursuit and (pursuit.mode or 0) ~= 0 then return false end
+  local reported = case.reported or os.time() >= (case.reportAt or 0)
+  vehicle:delete()
+  state.case, liveId = nil, nil
+  save()
+  notify(reported and "You left the stolen car behind. Police will tow it; there is no fine."
+    or "You left the stolen car behind. Nobody has noticed it yet; there is no fine.")
+  return true
+end
+
 -- Underground market ------------------------------------------------------------------------------
 -- After the identity change the vehicle is sold from the "Underground" phone app: list it at an asking
 -- price, buyers send timed offers, and an offer can be taken as is or negotiated. The flow mirrors the
@@ -1203,6 +1258,7 @@ function M.getUndergroundState()
     vehicle.name = record.niceName
     vehicle.thumbnail = inventory().getVehicleThumbnail and inventory().getVehicleThumbnail(case.inventoryId)
   end
+  if case.phase == "chopping" then vehicle.workshopRemaining = math.max(0, (case.readyAt or now) - now) end
   if case.phase == "workshop" then vehicle.workshopRemaining = math.max(0, (case.readyAt or now) - now) end
   if case.inventoryId and record then
     local base, hot = undergroundValue(case)
@@ -1423,6 +1479,16 @@ function M.onOverhaulComputerAddFunctions(menu, buttons)
           overhaul_career_career.closeAllMenus()
         end
       end}
+    row.rlsTheftChop = {id = "rlsTheftChop", order = 81,
+      label = string.format("Strip for parts (~%s, %d s)", money(chopValue(case)), chopSeconds),
+      callback = function()
+        if state and state.case == case and vehicleCase(case.inventoryId) then
+          startChop(case)
+          overhaul_career_career.closeAllMenus()
+        end
+      end}
+  elseif case.phase == "chopping" then
+    info("Being stripped for parts")
   elseif case.phase == "workshop" then
     info("Identity change in progress")
   elseif case.phase == "ready" then
@@ -1455,6 +1521,11 @@ local function updateCase(now)
     notify("The unstored vehicle was recovered and a theft fine was charged.")
     return
   end
+  if case.phase == "chopping" then
+    if now >= case.readyAt then finishChop(case) end
+    return
+  end
+  if checkAbandon(case) then return end
   if case.phase == "workshop" and now >= case.readyAt then
     local id = case.inventoryId
     case.identity = string.format("GX%06d", case.serial % 1000000)
