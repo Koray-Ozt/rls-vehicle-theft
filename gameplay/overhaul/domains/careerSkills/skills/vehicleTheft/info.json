@@ -1,6 +1,6 @@
 {
   "name": "Vehicle Theft",
-  "description": "Take cars off the street, give them a new identity and sell them to the underground. Higher levels make the ignition bypass easier, paperwork cheaper and buyers pay more.",
+  "description": "Take cars off the street, give them a new identity or strip them for parts, and sell them to the underground. Higher levels make the ignition bypass easier, paperwork cheaper, buyers pay more and let you juggle more stolen cars.",
   "order": 1200,
   "isSkill": true,
   "attributeKey": "careerSkills-vehicleTheft",
@@ -139,6 +139,12 @@
           "icon": "keys1",
           "heading": "Steady Hands II",
           "description": "The ignition bypass target zone is 20% wider, and a missed signal costs 3 seconds instead of 4."
+        },
+        {
+          "type": "unlockCard",
+          "icon": "keys1",
+          "heading": "Second Hand",
+          "description": "You can handle 3 stolen cars at once. More open cases make police reports come in sooner."
         }
       ]
     },
@@ -330,6 +336,12 @@
           "icon": "beamCurrency",
           "heading": "Cheap Paperwork II",
           "description": "Identity changes cost 20% less."
+        },
+        {
+          "type": "unlockCard",
+          "icon": "keys1",
+          "heading": "Full Garage",
+          "description": "You can handle 4 stolen cars at once."
         }
       ]
     },

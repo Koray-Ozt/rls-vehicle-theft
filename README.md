@@ -1,6 +1,6 @@
 # RLS Vehicle Theft
 
-Version 0.7.1 adds vehicle theft to RLS Career Overhaul. Take a vehicle from the street or a dealership, store it in an owned garage, change its identity, and sell it to underground buyers from the **Underground** phone app. Police, vehicle damage, workshop costs, and fines can turn a sale into a loss.
+Version 0.8.0 adds vehicle theft to RLS Career Overhaul. Take a vehicle from the street or a dealership, store it in an owned garage, change its identity, and sell it to underground buyers from the **Underground** phone app. Police, vehicle damage, workshop costs, and fines can turn a sale into a loss.
 
 This is an unofficial add-on. It is not affiliated with RLS Modding or BeamNG GmbH.
 
@@ -71,7 +71,9 @@ To change the key, open BeamNG's controls settings and look for **RLS Vehicle Th
 4. **Change its identity and repaint it.** At the garage computer, select the vehicle and choose **Change vehicle identity**. This also gives it a new plate. The work costs 23% of the car's value (at least $1,200) and takes 150 seconds; Vehicle Theft perks make it cheaper and faster. The Underground app counts down the remaining time. Repaint it with the RLS painting option on the same computer: the theft report describes the colour it had when you stored it.
 5. **Sell it from the Underground phone app.** Install **Underground** from the phone's App Store once. When the identity change is done, open the app, set an asking price and choose **List for sale**. Buyers send offers over time; each offer expires after a few minutes, and up to four can wait at once. For each offer choose **Accept**, **Decline** or **Negotiate**. You can sell from anywhere; the vehicle is handed over and the money is paid at once.
 
-**Or ditch it, or chop it.** If you do not want to keep a stolen car, there are two ways out. Walk about 120 m away from a car you have not stored, with no police on you, and you leave it behind: no theft fine, no payout, and the car is towed. Once a car is stored, you can skip the identity change and choose **Strip for parts** at the garage computer. It takes 90 seconds, needs no repaint, has no raid risk and pays about 34% of the car's value (Vehicle Theft perks raise it by up to 15%), less than an Underground sale but with no identity fee.
+**Or ditch it, or chop it.** If you do not want to keep a stolen car, there are two ways out. Walk about 120 m away from a car you have not stored, with no police on you, and you leave it behind: no theft fine, no payout, and the car is towed. Once a car is stored, you can skip the identity change and choose **Strip for parts** at the garage computer. It takes 90 seconds, needs no repaint, has no raid risk and pays about 34% of the car's value (Vehicle Theft perks raise it by up to 15%), less than an Underground sale but with no identity fee. If you drive the car out of the garage before the crew finishes, the job is cancelled and nothing is paid.
+
+**Several cars at once.** You can hold up to 2 open cases at the same time: each stored car, whether it is waiting, being disguised, stripped or listed, counts as one. Vehicle Theft level 10 raises the limit to 3 and level 25 to 4. You can only carry one freshly stolen car at a time: store it, sell it or ditch it before taking the next. Pick which car the **Underground** app shows with the buttons at its top; the garage computer lists the actions for each stored car separately. More open cases means more heat (see Consequences).
 
 ### Asking price and negotiation
 
@@ -102,6 +104,7 @@ A full theft usually earns 60–100 XP: level 5 takes roughly 15–20 thefts and
 | 5 | Getting into a parked car takes 3 seconds instead of 4 |
 | 8 / 18 / 30 / 45 / 50 | Underground buyers value your cars 3% / 6% / 10% / 12% / 15% higher |
 | 10 | A missed ignition signal costs 3 seconds instead of 4 |
+| 10 / 25 | You can handle 3 / 4 stolen cars at once instead of 2 |
 | 12 / 25 / 40 | Identity changes cost 10% / 20% / 30% less |
 | 15 | A parked car taken cleanly is noticed 25% later |
 | 20 / 40 | Identity changes take 120 / 90 seconds instead of 150 |
@@ -116,6 +119,7 @@ Theft milestones appear with RLS's general milestones and pay money when claimed
 - **Taking a parked vehicle** goes unnoticed for 90–180 seconds if you match every signal cleanly. Each missed signal trips the alarm and shortens that time. Two or more nearby traffic vehicles act as witnesses and shorten it further.
 - Once a vehicle is reported, any patrol that spots it within about 160 m starts an RLS pursuit. After you evade a pursuit, patrols ignore the vehicle for 45 seconds.
 - A new identity hides the plate, not the paint. If the vehicle still has the colour it had when you stored it, each new patrol that sees you driving it has a 30% chance to recognize it and start a pursuit, and the underground handover has a 20% chance to be raided, which seizes the vehicle and charges the theft fine. The Underground app marks such a vehicle as risky.
+- **Holding several cars raises the heat.** Each case you already have open makes the next report come in about 35% sooner, and raises the chance that a patrol recognizes an unrepainted car or that a handover is raided by 15% per extra case.
 - **Camera fines** (speed and red-light cameras) are not charged to you while you drive the stolen car with its original plate; they go to the registered owner. Once the identity change is done, the car is yours and RLS charges them normally.
 - A car with a new plate **and** a new colour is no longer matched to the theft report. An ordinary police arrest for another offence charges the usual RLS fine but does not seize it.
 - An official marketplace listing can be published normally. If you try to complete the title transfer, the sale is canceled, the listing is removed, the vehicle is seized, and a fine is charged. The sale pays out nothing.
@@ -145,7 +149,7 @@ Where the mod changes RLS behaviour (blocking official sales of stolen cars, sus
 
 Parked cars in RLS are simplified props with no engine or drivetrain. When you take one, the mod replaces it with the real model of the same car, in the same place, paint and plate, using that model's default configuration. The Ardente and Tograc props have no real model in the base game, so they cannot be taken.
 
-The mod supports one active vehicle theft case at a time. Store the stolen vehicle before leaving the session. An unstored vehicle does not survive a reload, and the case can result in a fine when you return.
+The mod handles 2 to 4 open cases at once (see Vehicle Theft level 10 and 25), but only one freshly stolen car can be carried at a time. Store the stolen vehicle before leaving the session. An unstored vehicle does not survive a reload, and the case can result in a fine when you return. Profiles saved with an earlier version are converted automatically; a case that was open keeps working.
 
 The mod ships no automated tests. Theft, the ignition screen, storage, the identity change and the Underground app have been played in BeamNG 0.40.5 with RLS 2.8.0. The Vehicle Theft skill, its perks, the theft milestones and the identity countdown fix in 0.7.0 have been checked only by reading the code against RLS, not yet in the game. The Underground app reuses RLS's negotiation component and phone screen helper, so a future RLS update that moves those files would break the app's negotiation screen.
 
@@ -155,7 +159,30 @@ This mod is released under the [MIT License](LICENSE). The license covers this m
 
 ## Changes
 
-- **0.7.1**: Vehicle Theft now appears in the phone's Skills app (patched copy of RLS's `usePhoneSkillsData.js`) and its level and XP show in the Underground app. Abandon a stolen car by walking away from it (no fine). Strip a stored car for parts at the garage computer. Camera fines go to the original owner while the stolen car keeps its plate. A fully disguised car is no longer seized when RLS arrests you for an unrelated offence. The controls menu now describes the key's current uses (parked, moving and dealership cars, storing).
+### 0.8.0
+
+**Added**
+- Several stolen cars at once: 2 open cases, 3 from Vehicle Theft level 10 and 4 from level 25. Each extra case shortens the report time of the next theft and raises recognition and raid chances.
+- Ditching a stolen car: walk about 120 m away from an unstored car with no police on you and it is left behind, with no theft fine.
+- Strip for parts: a stored car can be sold to a chop shop at the garage computer in 90 seconds for about 34% of its value, without an identity change or repaint and without raid risk. Driving the car away cancels the job. Pays XP and counts towards the underground earnings.
+- The Underground app shows your Vehicle Theft level and XP, and a car selector when several cases are open.
+- Vehicle Theft is listed in the phone's Skills app, through a patched copy of RLS's `usePhoneSkillsData.js` (three added lines, AGPL header kept).
+- Perk cards for the 3rd and 4th car slots.
+
+**Changed**
+- Saved data keeps a list of cases instead of one. Existing profiles migrate on load.
+
+### 0.7.1
+
+**Fixed**
+- Speed and red-light camera fines are no longer charged to you while the stolen car still wears its original plate; they go to the registered owner.
+- A fully disguised car is no longer seized when RLS arrests you for an unrelated offence.
+
+**Changed**
+- The controls menu now describes the key's current uses (parked, moving and dealership cars, storing).
+
+### Earlier versions
+
 - **0.7.0**: Vehicle Theft skill (50 levels, XP for each step of a theft, perks), six theft milestones, the skill on RLS's Skills page. The Underground app's countdowns keep running in every phase.
 - **0.6.1**: Carjack civilian cars driving below about 30 km/h.
 - **0.6.0**: Underground phone app with listings, timed offers from different buyer types, and negotiation. Replaces the single offer at the garage computer.

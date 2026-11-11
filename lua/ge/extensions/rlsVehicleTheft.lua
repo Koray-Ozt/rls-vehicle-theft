@@ -5,6 +5,8 @@ local bindings = {}
 local ignition, ignitionToken, ignitionCooldown = nil, 0, 0
 -- Underground app session state (not saved): the open negotiation, whether the app is showing, last sale.
 local negotiation, appOpen, lastResult
+-- The case the Underground app is showing (not saved).
+local selectedSerial
 local appTick = 0
 local ignitionStages, ignitionSeconds = 3, 25
 -- Per-stage marker speed (track units/s on a 15-unit track) and target half-width.
@@ -49,13 +51,19 @@ local function load()
     state.bans = state.bans or {}
     state.citations = state.citations or {}
     state.serial = state.serial or 0
-    -- Before 0.6 a single offer was requested at the garage computer; those cases go back to "ready"
-    -- so the vehicle can be listed in the Underground phone app.
-    if state.case and state.case.phase == "offer" then
-      state.case.phase, state.case.offer, state.case.expiresAt = "ready", nil, nil
+    state.cases = state.cases or {}
+    -- Before 0.8 a profile held a single case in state.case; it becomes the first entry of the list.
+    if state.case then
+      table.insert(state.cases, state.case)
+      state.case = nil
+    end
+    for _, case in ipairs(state.cases) do
+      -- Before 0.6 a single offer was requested at the garage computer; those cases go back to "ready"
+      -- so the vehicle can be listed in the Underground phone app.
+      if case.phase == "offer" then case.phase, case.offer, case.expiresAt = "ready", nil, nil end
     end
     attempted, liveId, patrolCheck = nil, nil, 0
-    negotiation, lastResult = nil, nil
+    negotiation, lastResult, selectedSerial = nil, nil, nil
   end
   return true
 end
@@ -90,6 +98,7 @@ local perkTiers = {
   offerPace = {{30, 0.85}},
   paintRecognition = {{35, 0.22}, {50, 0.15}},
   paintSting = {{35, 0.15}, {50, 0.10}},
+  caseLimit = {{10, 3}, {25, 4}},
 }
 
 local function skillXp()
@@ -230,11 +239,57 @@ local function decorateSkillsPage(original)
   end
 end
 
+-- A profile can hold several open cases (state.cases). At most one is "transit": the car you are
+-- carrying, tracked by liveId. Every other case is a stored car that follows its inventory id.
 local function vehicleCase(id)
-  local case = state and state.case
-  if not case or case.inventoryId ~= tonumber(id) then return end
-  local record = inventory().getVehicles()[case.inventoryId]
-  if record and record.rlsTheftCase == case.serial then return case end
+  id = tonumber(id)
+  if not id then return end
+  for _, case in ipairs(state and state.cases or {}) do
+    if case.inventoryId == id then
+      local record = inventory().getVehicles()[id]
+      if record and record.rlsTheftCase == case.serial then return case end
+    end
+  end
+end
+
+local function transitCase()
+  for _, case in ipairs(state and state.cases or {}) do
+    if case.phase == "transit" then return case end
+  end
+end
+
+local function findCase(serial)
+  for _, case in ipairs(state and state.cases or {}) do
+    if case.serial == serial then return case end
+  end
+end
+
+local function removeCase(case)
+  for index, other in ipairs(state.cases) do
+    if other == case then
+      table.remove(state.cases, index)
+      break
+    end
+  end
+  -- liveId only ever belongs to the transit case; once none is left it must not point at a stale object.
+  if not transitCase() then liveId = nil end
+end
+
+-- The live object of a case: the carried car for a transit case, the garage car otherwise.
+local function caseVehicleId(case)
+  if case.phase == "transit" then return liveId end
+  return case.inventoryId and inventory().getVehicleIdFromInventoryId(case.inventoryId) or nil
+end
+
+local function caseForVehicle(vehId)
+  for _, case in ipairs(state and state.cases or {}) do
+    if vehId and caseVehicleId(case) == vehId then return case end
+  end
+end
+
+-- Each extra open case keeps more police attention on you.
+local function heat()
+  return 1 + 0.15 * math.max(0, #(state and state.cases or {}) - 1)
 end
 
 -- RLS leaves the arrested player seated; deleting a vehicle with the player inside strands them.
@@ -271,11 +326,11 @@ end
 
 -- A new identity hides the plate, not the paint described in the theft report.
 -- Base 30% per new patrol that sees the car and 20% at the underground handover; Vehicle Theft lowers both.
-local function paintRecognitionChance() return perk("paintRecognition", 0.3) end
-local function paintStingChance() return perk("paintSting", 0.2) end
+local function paintRecognitionChance() return math.min(0.9, perk("paintRecognition", 0.3) * heat()) end
+local function paintStingChance() return math.min(0.9, perk("paintSting", 0.2) * heat()) end
+local function caseLimit() return perk("caseLimit", 2) end
 
-local function seize(reason)
-  local case = state.case
+local function seize(reason, case)
   if not case then return false end
   local id = case.inventoryId
   if id and vehicleCase(id) then
@@ -286,7 +341,7 @@ local function seize(reason)
       notify("Sale canceled. The vehicle is pending seizure.")
       return false
     end
-  elseif liveId then
+  elseif case.phase == "transit" and liveId then
     local vehicle = getObjectByID(liveId)
     if vehicle then
       exitVehicle(liveId)
@@ -295,17 +350,19 @@ local function seize(reason)
   end
   local amount = fineFor(case)
   charge(amount, reason, "fine", true)
-  state.case, liveId = nil, nil
+  removeCase(case)
   save()
   notify(reason .. " Vehicle seized. Fine: " .. money(amount))
   return false
 end
 
 local function rejectTransfer(id)
-  if not load() or not vehicleCase(id) then return nil end
-  local reason = state.case.identity and "Registration check failed during title transfer."
+  if not load() then return nil end
+  local case = vehicleCase(id)
+  if not case then return nil end
+  local reason = case.identity and "Registration check failed during title transfer."
     or "The title transfer flagged the vehicle as stolen."
-  seize(reason)
+  seize(reason, case)
   return false
 end
 
@@ -323,10 +380,8 @@ local cameraFineLabels = {
 
 local function wearsOriginalPlate()
   if not load() then return false end
-  local case = state.case
-  if not case or case.identity then return false end
-  local id = case.inventoryId and inventory().getVehicleIdFromInventoryId(case.inventoryId) or liveId
-  return id ~= nil and id == be:getPlayerVehicleID(0)
+  local case = caseForVehicle(be:getPlayerVehicleID(0))
+  return case ~= nil and not case.identity
 end
 
 local function bind(owner, key, decorate)
@@ -553,8 +608,10 @@ end
 local function begin(vehicle, source, seller, value, delay, organizationId, immediate)
   liveId = vehicle:getID()
   state.serial = state.serial + 1
-  state.case = {serial = state.serial, source = source, seller = seller, value = tonumber(value) or 0,
-    reportAt = os.time() + math.max(1, math.ceil(delay)), phase = "transit", immediate = immediate or nil}
+  -- Every case you are already holding makes the report come in sooner.
+  delay = delay / (1 + 0.35 * #state.cases)
+  table.insert(state.cases, {serial = state.serial, source = source, seller = seller, value = tonumber(value) or 0,
+    reportAt = os.time() + math.max(1, math.ceil(delay)), phase = "transit", immediate = immediate or nil})
   patrolCheck = 0
   if source == "testDrive" then
     state.bans[seller] = os.time() + 1800
@@ -602,7 +659,8 @@ end
 -- auto: called every second after the player leaves the car; repeat a refusal only when it changes.
 local lastStoreRefusal
 local function store(vehicle, auto)
-  local case = state.case
+  local case = transitCase()
+  if not case then return end
   local function refuse(message)
     if not auto or message ~= lastStoreRefusal then notify(message) end
     lastStoreRefusal = message
@@ -651,7 +709,7 @@ local function store(vehicle, auto)
   end
   case.paint = recordColor(id)
   if not inventory().moveVehicleToGarage(id, garage.id) then
-    seize("Garage intake failed.")
+    seize("Garage intake failed.", case)
     return
   end
   inventory().setVehicleDirty(id)
@@ -904,9 +962,13 @@ function M.attempt()
   bindRls()
   local player = walkingPlayer()
   if not player then return end
-  if state.case then
-    if state.case.phase == "transit" and liveId == player:getID() then store(player)
-    else notify("You already have an open vehicle theft case.") end
+  if transitCase() then
+    if liveId == player:getID() then store(player)
+    else notify("You are still carrying a stolen car. Store it in a garage you own, or walk away from it, first.") end
+    return
+  end
+  if #state.cases >= caseLimit() then
+    notify(string.format("You are already handling %d stolen cars. Sell, strip or ditch one before taking another.", #state.cases))
     return
   end
   if attempted or ignition then return end
@@ -1058,7 +1120,7 @@ local function finishChop(case)
   if case.source == "testDrive" then
     state.citations[#state.citations + 1] = {due = os.time() + 150, amount = fineFor(case)}
   end
-  state.case, liveId = nil, nil
+  removeCase(case)
   overhaul_career_economy_payment.reward({money = {amount = price}},
     {label = "Chop shop parts sale", category = "sale", tags = {"vehicleTheft"}}, true)
   save()
@@ -1081,7 +1143,7 @@ local function checkAbandon(case)
   if pursuit and (pursuit.mode or 0) ~= 0 then return false end
   local reported = case.reported or os.time() >= (case.reportAt or 0)
   vehicle:delete()
-  state.case, liveId = nil, nil
+  removeCase(case)
   save()
   notify(reported and "You left the stolen car behind. Police will tow it; there is no fine."
     or "You left the stolen car behind. Nobody has noticed it yet; there is no fine.")
@@ -1212,7 +1274,7 @@ local function completeUndergroundSale(case, price, negotiated)
   price = math.floor(tonumber(price) or 0)
   if price <= 0 or not vehicleCase(case.inventoryId) or case.seizure then return end
   if repainted(case) == false and math.random() < paintStingChance() then
-    seize("The buyer's contact matched the paint to the theft report and police raided the handover.")
+    seize("The buyer's contact matched the paint to the theft report and police raided the handover.", case)
     lastResult = {kind = "raided"}
     return "raided"
   end
@@ -1224,7 +1286,7 @@ local function completeUndergroundSale(case, price, negotiated)
   if case.source == "testDrive" then
     state.citations[#state.citations + 1] = {due = os.time() + 150, amount = fineFor(case)}
   end
-  state.case, liveId = nil, nil
+  removeCase(case)
   overhaul_career_economy_payment.reward({money = {amount = price}},
     {label = "Underground vehicle sale", category = "sale", tags = {"vehicleTheft"}}, true)
   save()
@@ -1236,8 +1298,20 @@ local function completeUndergroundSale(case, price, negotiated)
   return "sold"
 end
 
+-- The case the Underground app is showing: the one the player picked, else the first stored car,
+-- else the car still being carried.
+local function selectedCase()
+  local list = state and state.cases or {}
+  local first
+  for _, case in ipairs(list) do
+    if case.serial == selectedSerial then return case end
+    if not first and case.phase ~= "transit" then first = case end
+  end
+  return first or list[1]
+end
+
 local function sellableCase()
-  local case = state and state.case
+  local case = selectedCase()
   if case and case.phase == "listed" and case.listing and vehicleCase(case.inventoryId) and not case.seizure then
     return case
   end
@@ -1257,11 +1331,19 @@ function M.getUndergroundState()
   if not load() then return {available = false} end
   local view = {available = true, result = lastResult, negotiation = negotiationView(), offers = {}}
   view.skill = skillProgress()
-  local case = state.case
+  view.limit = caseLimit()
+  view.cases = {}
+  local case = selectedCase()
+  for _, other in ipairs(state.cases) do
+    local record = other.inventoryId and inventory().getVehicles()[other.inventoryId]
+    table.insert(view.cases, {serial = other.serial, phase = other.phase,
+      name = record and record.niceName or "Stolen vehicle", selected = other == case})
+  end
   if not case then return view end
   local now = os.time()
   local record = case.inventoryId and inventory().getVehicles()[case.inventoryId]
-  local vehicle = {phase = case.phase, identity = case.identity, source = case.source, repainted = repainted(case)}
+  local vehicle = {serial = case.serial, phase = case.phase, identity = case.identity, source = case.source,
+    repainted = repainted(case)}
   if record then
     vehicle.name = record.niceName
     vehicle.thumbnail = inventory().getVehicleThumbnail and inventory().getVehicleThumbnail(case.inventoryId)
@@ -1295,9 +1377,15 @@ function M.undergroundSetOpen(open)
   if appOpen then publishUnderground() end
 end
 
+function M.undergroundSelect(serial)
+  if not load() or negotiation then return end
+  if findCase(tonumber(serial)) then selectedSerial = tonumber(serial) end
+  publishUnderground()
+end
+
 function M.undergroundList(price)
   if not load() then return end
-  local case = state.case
+  local case = selectedCase()
   if not case or case.phase ~= "ready" or not vehicleCase(case.inventoryId) or case.seizure then return end
   price = roundPrice(price)
   local now = os.time()
@@ -1381,7 +1469,7 @@ function M.undergroundNegotiate(offerId)
   local archetype = buyerArchetypes[offer.archetype] or buyerArchetypes.fixer
   local asking = math.max(case.listing.price, offer.value)
   negotiation = {
-    offerId = offer.id, opponentName = offer.buyer .. " (" .. (archetype.label or "Buyer") .. ")",
+    serial = case.serial, offerId = offer.id, opponentName = offer.buyer .. " (" .. (archetype.label or "Buyer") .. ")",
     quote = offer.quote, archetype = archetype, patience = 1, token = (negotiation and negotiation.token or 0) + 1,
     theirOffer = offer.value, myOffer = asking, startingPrice = asking, marketValue = base,
     maxBuyerPrice = math.max(base * 1.12, offer.value * 1.2), status = "initial",
@@ -1391,7 +1479,7 @@ function M.undergroundNegotiate(offerId)
 end
 
 local function settleNegotiationSale(n, price)
-  local case = sellableCase()
+  local case = findCase(n.serial)
   local opening = n.history[2] and n.history[2].theirOffer or price
   local outcome = case and completeUndergroundSale(case, price, price > opening)
   n.result = outcome and {kind = outcome, price = price} or {kind = "failed"}
@@ -1417,7 +1505,7 @@ function M.undergroundCounter(price)
     n.patience = math.max(0, n.patience - sellingPatienceDrop(n.myOffer, n.marketValue, n.archetype))
     if n.patience <= 0 then
       n.status = "failed"
-      local case = sellableCase()
+      local case = findCase(n.serial)
       if case then removeOffer(case, n.offerId); save() end
     else
       local counter = buyerCounter(n.myOffer, n.theirOffer, n.maxBuyerPrice)
@@ -1468,10 +1556,8 @@ local function updateListing(case, now)
   if changed then save() end
 end
 
-function M.onOverhaulComputerAddFunctions(menu, buttons)
-  if not load() then return end
-  local case = state.case
-  if not case or not case.inventoryId or not vehicleCase(case.inventoryId) or case.seizure then return end
+local function addComputerRow(case, buttons)
+  if not case.inventoryId or not vehicleCase(case.inventoryId) or case.seizure then return end
   local row = buttons.vehicleSpecific[case.inventoryId]
   if not row then return end
   -- RLS calls callback() unconditionally if a click gets through, so even a disabled row needs one.
@@ -1482,7 +1568,7 @@ function M.onOverhaulComputerAddFunctions(menu, buttons)
     row.rlsTheft = {id = "rlsTheft", order = 80,
       label = "Change vehicle identity (" .. money(identityFee(currentValue(case))) .. ")",
       callback = function()
-        if state and state.case == case and vehicleCase(case.inventoryId) then
+        if state and findCase(case.serial) == case and vehicleCase(case.inventoryId) then
           startIdentity(case)
           overhaul_career_career.closeAllMenus()
         end
@@ -1490,7 +1576,7 @@ function M.onOverhaulComputerAddFunctions(menu, buttons)
     row.rlsTheftChop = {id = "rlsTheftChop", order = 81,
       label = string.format("Strip for parts (~%s, %d s)", money(chopValue(case)), chopSeconds),
       callback = function()
-        if state and state.case == case and vehicleCase(case.inventoryId) then
+        if state and findCase(case.serial) == case and vehicleCase(case.inventoryId) then
           startChop(case)
           overhaul_career_career.closeAllMenus()
         end
@@ -1506,31 +1592,41 @@ function M.onOverhaulComputerAddFunctions(menu, buttons)
   end
 end
 
-local function updateCase(now)
-  local case = state.case
-  if not case then return end
+function M.onOverhaulComputerAddFunctions(menu, buttons)
+  if not load() then return end
+  for _, case in ipairs(state.cases) do addComputerRow(case, buttons) end
+end
+
+local function updateCase(case, now)
   if case.seizure then
     if not case.inventoryId or not vehicleCase(case.inventoryId)
       or overhaul_career_logistics_general.canRemoveLogisticsVehicle(case.inventoryId) then
-      seize(case.seizure)
+      seize(case.seizure, case)
     end
     return
   end
   if case.inventoryId and not vehicleCase(case.inventoryId) then
     charge(fineFor(case), "Missing stolen vehicle", "fine", true)
-    state.case, liveId = nil, nil
+    removeCase(case)
     save()
     return
   end
   if case.phase == "transit" and not liveId then
-    state.case = nil
+    removeCase(case)
     charge(fineFor(case), "Unresolved vehicle theft", "fine", true)
     save()
     notify("The unstored vehicle was recovered and a theft fine was charged.")
     return
   end
   if case.phase == "chopping" then
-    if now >= case.readyAt then finishChop(case) end
+    -- Driving the car out of the garage interrupts the crew: no payment, the car is yours again.
+    if caseVehicleId(case) == be:getPlayerVehicleID(0) then
+      case.phase, case.readyAt = "stored", nil
+      save()
+      notify("You took the car away before the crew finished. Nothing was paid.")
+    elseif now >= case.readyAt then
+      finishChop(case)
+    end
     return
   end
   if checkAbandon(case) then return end
@@ -1638,14 +1734,15 @@ function M.onUpdate(dtReal, dt)
       save()
     end
   end
-  updateCase(now)
+  for index = #state.cases, 1, -1 do
+    if state.cases[index] then updateCase(state.cases[index], now) end
+  end
 end
 
 function M.onPursuitAction(id, action)
-  if not state or not state.case then return end
-  local arrestedCase = state.case
-  local vehicleId = arrestedCase.inventoryId and inventory().getVehicleIdFromInventoryId(arrestedCase.inventoryId) or liveId
-  if id ~= vehicleId then return end
+  if not state then return end
+  local arrestedCase = caseForVehicle(id)
+  if not arrestedCase then return end
   if action == "evade" then
     arrestedCase.patrolCooldownUntil = os.time() + 45
     arrestedCase.evades = (arrestedCase.evades or 0) + 1
@@ -1657,9 +1754,9 @@ function M.onPursuitAction(id, action)
     core_jobsystem.create(function(job)
       job.sleep(0.1)
       -- A fully disguised car caught for an ordinary offence is just a car: RLS charges its normal fine.
-      if state and state.case == arrestedCase and not disguised(arrestedCase) and (liveId == id or
-        (state.case.inventoryId and inventory().getVehicleIdFromInventoryId(state.case.inventoryId) == id)) then
-        seize("Police identified the stolen vehicle.")
+      if state and findCase(arrestedCase.serial) == arrestedCase and not disguised(arrestedCase)
+        and caseVehicleId(arrestedCase) == id then
+        seize("Police identified the stolen vehicle.", arrestedCase)
       end
     end, 1)
   end

@@ -57,6 +57,16 @@
             <div class="ug-skill-bar"><div :style="{ width: skillPercent + '%' }"></div></div>
           </section>
 
+          <section v-if="state.cases && state.cases.length" class="ug-cases">
+            <button
+              v-for="c in state.cases"
+              :key="c.serial"
+              class="ug-case"
+              :class="{ on: c.selected }"
+              @click="call(`undergroundSelect(${c.serial})`)">{{ c.name }}</button>
+            <span class="ug-cases-note">{{ state.cases.length }} / {{ state.limit }} cars</span>
+          </section>
+
           <section v-if="state.result" class="ug-result" :class="state.result.kind">
             <strong v-if="state.result.kind === 'sold'">Sold for {{ money(state.result.price) }}</strong>
             <strong v-else>Police raided the handover</strong>
@@ -289,6 +299,10 @@ onUnmounted(() => {
   min-height: 0;
 }
 
+.ug-cases { display: flex; flex-wrap: wrap; gap: 0.35rem; align-items: center; margin-bottom: 0.6rem; }
+.ug-case { padding: 0.25rem 0.6rem; border-radius: 1rem; border: 1px solid rgba(255, 255, 255, 0.25); background: transparent; color: inherit; font-size: 0.8rem; cursor: pointer; }
+.ug-case.on { background: #e85d04; border-color: #e85d04; color: #fff; }
+.ug-cases-note { margin-left: auto; font-size: 0.75rem; opacity: 0.7; }
 .ug-skill { margin-bottom: 0.6rem; }
 .ug-skill-row { display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 0.25rem; }
 .ug-skill-bar { height: 0.3rem; border-radius: 0.2rem; background: rgba(255, 255, 255, 0.15); overflow: hidden; }
