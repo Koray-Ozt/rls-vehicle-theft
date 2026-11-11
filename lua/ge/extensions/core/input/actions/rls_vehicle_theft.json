@@ -1,0 +1,10 @@
+{
+  "rlsVehicleTheftAttempt": {
+    "cat": "gameplay",
+    "ctx": "tlua",
+    "actionMap": "Global",
+    "onDown": "if rlsVehicleTheft then rlsVehicleTheft.attempt() end",
+    "title": "RLS Vehicle Theft: Take or store vehicle",
+    "desc": "Take an inspected dealership car or a stopped traffic vehicle. Use again to store the stolen car at an owned garage."
+  }
+}

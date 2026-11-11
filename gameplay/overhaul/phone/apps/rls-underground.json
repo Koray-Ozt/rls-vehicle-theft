@@ -1,0 +1,36 @@
+{
+  "id": "rls-underground",
+  "name": "Underground",
+  "icon": "car",
+  "iconTile": "/ui/images/rls_vehicle_theft/underground.png",
+  "route": "/overhaul/phone-rls-underground",
+  "color": "#3a1410",
+  "iconColor": "#ffffff",
+  "category": "Vehicles",
+  "storeTagline": "Off-the-books car sales",
+  "storeDescription": "Sell stolen vehicles after their identity is changed. List a car, take offers from underground buyers, and negotiate the price. Requires the RLS Vehicle Theft mod.",
+  "defaultPage": 1,
+  "defaultPosition": 10,
+  "notifications": [
+    {
+      "key": "rlsUnderground.newOffer",
+      "label": "New Offer",
+      "default": true,
+      "description": "Underground buyer offers on your listed vehicle",
+      "order": 0
+    }
+  ],
+  "notificationSources": [
+    "underground"
+  ],
+  "uiRoutes": [
+    {
+      "name": "phone-rls-underground",
+      "path": "phone-rls-underground",
+      "component": "/ui/ui-vue/mods/rls_vehicle_theft/UndergroundApp.vue",
+      "uiOrder": 900,
+      "luaOrder": 900,
+      "backTarget": "phone-main"
+    }
+  ]
+}

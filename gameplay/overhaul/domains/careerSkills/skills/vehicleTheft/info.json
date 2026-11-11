@@ -1,0 +1,628 @@
+{
+  "name": "Vehicle Theft",
+  "description": "Take cars off the street, give them a new identity and sell them to the underground. Higher levels make the ignition bypass easier, paperwork cheaper and buyers pay more.",
+  "order": 1200,
+  "isSkill": true,
+  "attributeKey": "careerSkills-vehicleTheft",
+  "hideUntilProgress": false,
+  "icon": "keys1",
+  "levels": [
+    {
+      "requiredValue": 0,
+      "description": {
+        "type": "unlockCard",
+        "icon": "info",
+        "heading": "Level 1",
+        "description": "Reach Vehicle Theft level 1."
+      },
+      "unlocks": [
+        {
+          "type": "unlockCard",
+          "icon": "keys1",
+          "heading": "Base Activities Available",
+          "description": "Steal parked and moving civilian cars and dealership cars, change their identity in your garage, and sell them in the Underground phone app."
+        }
+      ]
+    },
+    {
+      "requiredValue": 200,
+      "description": {
+        "type": "unlockCard",
+        "icon": "info",
+        "heading": "Level 2",
+        "description": "Reach Vehicle Theft level 2."
+      },
+      "unlocks": []
+    },
+    {
+      "requiredValue": 500,
+      "description": {
+        "type": "unlockCard",
+        "icon": "info",
+        "heading": "Level 3",
+        "description": "Reach Vehicle Theft level 3."
+      },
+      "unlocks": [
+        {
+          "type": "unlockCard",
+          "icon": "keys1",
+          "heading": "Steady Hands I",
+          "description": "The ignition bypass target zone is 10% wider."
+        }
+      ]
+    },
+    {
+      "requiredValue": 900,
+      "description": {
+        "type": "unlockCard",
+        "icon": "info",
+        "heading": "Level 4",
+        "description": "Reach Vehicle Theft level 4."
+      },
+      "unlocks": []
+    },
+    {
+      "requiredValue": 1400,
+      "description": {
+        "type": "unlockCard",
+        "icon": "info",
+        "heading": "Level 5",
+        "description": "Reach Vehicle Theft level 5."
+      },
+      "unlocks": [
+        {
+          "type": "unlockCard",
+          "icon": "car",
+          "heading": "Quick Hands",
+          "description": "Getting into a parked car takes 3 seconds instead of 4."
+        }
+      ]
+    },
+    {
+      "requiredValue": 1900,
+      "description": {
+        "type": "unlockCard",
+        "icon": "info",
+        "heading": "Level 6",
+        "description": "Reach Vehicle Theft level 6."
+      },
+      "unlocks": []
+    },
+    {
+      "requiredValue": 2600,
+      "description": {
+        "type": "unlockCard",
+        "icon": "info",
+        "heading": "Level 7",
+        "description": "Reach Vehicle Theft level 7."
+      },
+      "unlocks": []
+    },
+    {
+      "requiredValue": 3400,
+      "description": {
+        "type": "unlockCard",
+        "icon": "info",
+        "heading": "Level 8",
+        "description": "Reach Vehicle Theft level 8."
+      },
+      "unlocks": [
+        {
+          "type": "unlockCard",
+          "icon": "beamCurrency",
+          "heading": "Fence Contacts I",
+          "description": "Underground buyers value your cars 3% higher."
+        }
+      ]
+    },
+    {
+      "requiredValue": 4300,
+      "description": {
+        "type": "unlockCard",
+        "icon": "info",
+        "heading": "Level 9",
+        "description": "Reach Vehicle Theft level 9."
+      },
+      "unlocks": []
+    },
+    {
+      "requiredValue": 5300,
+      "description": {
+        "type": "unlockCard",
+        "icon": "info",
+        "heading": "Level 10",
+        "description": "Reach Vehicle Theft level 10."
+      },
+      "unlocks": [
+        {
+          "type": "unlockCard",
+          "icon": "keys1",
+          "heading": "Steady Hands II",
+          "description": "The ignition bypass target zone is 20% wider, and a missed signal costs 3 seconds instead of 4."
+        }
+      ]
+    },
+    {
+      "requiredValue": 6500,
+      "description": {
+        "type": "unlockCard",
+        "icon": "info",
+        "heading": "Level 11",
+        "description": "Reach Vehicle Theft level 11."
+      },
+      "unlocks": []
+    },
+    {
+      "requiredValue": 7900,
+      "description": {
+        "type": "unlockCard",
+        "icon": "info",
+        "heading": "Level 12",
+        "description": "Reach Vehicle Theft level 12."
+      },
+      "unlocks": [
+        {
+          "type": "unlockCard",
+          "icon": "beamCurrency",
+          "heading": "Cheap Paperwork I",
+          "description": "Identity changes cost 10% less."
+        }
+      ]
+    },
+    {
+      "requiredValue": 9400,
+      "description": {
+        "type": "unlockCard",
+        "icon": "info",
+        "heading": "Level 13",
+        "description": "Reach Vehicle Theft level 13."
+      },
+      "unlocks": []
+    },
+    {
+      "requiredValue": 11000,
+      "description": {
+        "type": "unlockCard",
+        "icon": "info",
+        "heading": "Level 14",
+        "description": "Reach Vehicle Theft level 14."
+      },
+      "unlocks": []
+    },
+    {
+      "requiredValue": 13000,
+      "description": {
+        "type": "unlockCard",
+        "icon": "info",
+        "heading": "Level 15",
+        "description": "Reach Vehicle Theft level 15."
+      },
+      "unlocks": [
+        {
+          "type": "unlockCard",
+          "icon": "keys1",
+          "heading": "Quiet Entry",
+          "description": "A parked car you take cleanly is noticed 25% later."
+        }
+      ]
+    },
+    {
+      "requiredValue": 15000,
+      "description": {
+        "type": "unlockCard",
+        "icon": "info",
+        "heading": "Level 16",
+        "description": "Reach Vehicle Theft level 16."
+      },
+      "unlocks": []
+    },
+    {
+      "requiredValue": 17500,
+      "description": {
+        "type": "unlockCard",
+        "icon": "info",
+        "heading": "Level 17",
+        "description": "Reach Vehicle Theft level 17."
+      },
+      "unlocks": []
+    },
+    {
+      "requiredValue": 20000,
+      "description": {
+        "type": "unlockCard",
+        "icon": "info",
+        "heading": "Level 18",
+        "description": "Reach Vehicle Theft level 18."
+      },
+      "unlocks": [
+        {
+          "type": "unlockCard",
+          "icon": "beamCurrency",
+          "heading": "Fence Contacts II",
+          "description": "Underground buyers value your cars 6% higher."
+        }
+      ]
+    },
+    {
+      "requiredValue": 23000,
+      "description": {
+        "type": "unlockCard",
+        "icon": "info",
+        "heading": "Level 19",
+        "description": "Reach Vehicle Theft level 19."
+      },
+      "unlocks": []
+    },
+    {
+      "requiredValue": 26000,
+      "description": {
+        "type": "unlockCard",
+        "icon": "info",
+        "heading": "Level 20",
+        "description": "Reach Vehicle Theft level 20."
+      },
+      "unlocks": [
+        {
+          "type": "unlockCard",
+          "icon": "garage01",
+          "heading": "Fast Workshop I",
+          "description": "Identity changes take 120 seconds instead of 150."
+        }
+      ]
+    },
+    {
+      "requiredValue": 29000,
+      "description": {
+        "type": "unlockCard",
+        "icon": "info",
+        "heading": "Level 21",
+        "description": "Reach Vehicle Theft level 21."
+      },
+      "unlocks": []
+    },
+    {
+      "requiredValue": 33000,
+      "description": {
+        "type": "unlockCard",
+        "icon": "info",
+        "heading": "Level 22",
+        "description": "Reach Vehicle Theft level 22."
+      },
+      "unlocks": []
+    },
+    {
+      "requiredValue": 37000,
+      "description": {
+        "type": "unlockCard",
+        "icon": "info",
+        "heading": "Level 23",
+        "description": "Reach Vehicle Theft level 23."
+      },
+      "unlocks": []
+    },
+    {
+      "requiredValue": 41000,
+      "description": {
+        "type": "unlockCard",
+        "icon": "info",
+        "heading": "Level 24",
+        "description": "Reach Vehicle Theft level 24."
+      },
+      "unlocks": []
+    },
+    {
+      "requiredValue": 46000,
+      "description": {
+        "type": "unlockCard",
+        "icon": "info",
+        "heading": "Level 25",
+        "description": "Reach Vehicle Theft level 25."
+      },
+      "unlocks": [
+        {
+          "type": "unlockCard",
+          "icon": "keys1",
+          "heading": "Steady Hands III",
+          "description": "The ignition bypass target zone is 30% wider."
+        },
+        {
+          "type": "unlockCard",
+          "icon": "beamCurrency",
+          "heading": "Cheap Paperwork II",
+          "description": "Identity changes cost 20% less."
+        }
+      ]
+    },
+    {
+      "requiredValue": 51000,
+      "description": {
+        "type": "unlockCard",
+        "icon": "info",
+        "heading": "Level 26",
+        "description": "Reach Vehicle Theft level 26."
+      },
+      "unlocks": []
+    },
+    {
+      "requiredValue": 56000,
+      "description": {
+        "type": "unlockCard",
+        "icon": "info",
+        "heading": "Level 27",
+        "description": "Reach Vehicle Theft level 27."
+      },
+      "unlocks": []
+    },
+    {
+      "requiredValue": 62000,
+      "description": {
+        "type": "unlockCard",
+        "icon": "info",
+        "heading": "Level 28",
+        "description": "Reach Vehicle Theft level 28."
+      },
+      "unlocks": []
+    },
+    {
+      "requiredValue": 68000,
+      "description": {
+        "type": "unlockCard",
+        "icon": "info",
+        "heading": "Level 29",
+        "description": "Reach Vehicle Theft level 29."
+      },
+      "unlocks": []
+    },
+    {
+      "requiredValue": 74000,
+      "description": {
+        "type": "unlockCard",
+        "icon": "info",
+        "heading": "Level 30",
+        "description": "Reach Vehicle Theft level 30."
+      },
+      "unlocks": [
+        {
+          "type": "unlockCard",
+          "icon": "beamCurrency",
+          "heading": "Fence Contacts III",
+          "description": "Underground buyers value your cars 10% higher, and offers arrive 15% sooner."
+        }
+      ]
+    },
+    {
+      "requiredValue": 81000,
+      "description": {
+        "type": "unlockCard",
+        "icon": "info",
+        "heading": "Level 31",
+        "description": "Reach Vehicle Theft level 31."
+      },
+      "unlocks": []
+    },
+    {
+      "requiredValue": 88000,
+      "description": {
+        "type": "unlockCard",
+        "icon": "info",
+        "heading": "Level 32",
+        "description": "Reach Vehicle Theft level 32."
+      },
+      "unlocks": []
+    },
+    {
+      "requiredValue": 96000,
+      "description": {
+        "type": "unlockCard",
+        "icon": "info",
+        "heading": "Level 33",
+        "description": "Reach Vehicle Theft level 33."
+      },
+      "unlocks": []
+    },
+    {
+      "requiredValue": 104000,
+      "description": {
+        "type": "unlockCard",
+        "icon": "info",
+        "heading": "Level 34",
+        "description": "Reach Vehicle Theft level 34."
+      },
+      "unlocks": []
+    },
+    {
+      "requiredValue": 113000,
+      "description": {
+        "type": "unlockCard",
+        "icon": "info",
+        "heading": "Level 35",
+        "description": "Reach Vehicle Theft level 35."
+      },
+      "unlocks": [
+        {
+          "type": "unlockCard",
+          "icon": "roadblockL",
+          "heading": "Low Profile",
+          "description": "An unrepainted car is recognized by a patrol 22% of the time instead of 30%, and a handover is raided 15% of the time instead of 20%."
+        }
+      ]
+    },
+    {
+      "requiredValue": 122000,
+      "description": {
+        "type": "unlockCard",
+        "icon": "info",
+        "heading": "Level 36",
+        "description": "Reach Vehicle Theft level 36."
+      },
+      "unlocks": []
+    },
+    {
+      "requiredValue": 131000,
+      "description": {
+        "type": "unlockCard",
+        "icon": "info",
+        "heading": "Level 37",
+        "description": "Reach Vehicle Theft level 37."
+      },
+      "unlocks": []
+    },
+    {
+      "requiredValue": 141000,
+      "description": {
+        "type": "unlockCard",
+        "icon": "info",
+        "heading": "Level 38",
+        "description": "Reach Vehicle Theft level 38."
+      },
+      "unlocks": []
+    },
+    {
+      "requiredValue": 151000,
+      "description": {
+        "type": "unlockCard",
+        "icon": "info",
+        "heading": "Level 39",
+        "description": "Reach Vehicle Theft level 39."
+      },
+      "unlocks": []
+    },
+    {
+      "requiredValue": 162000,
+      "description": {
+        "type": "unlockCard",
+        "icon": "info",
+        "heading": "Level 40",
+        "description": "Reach Vehicle Theft level 40."
+      },
+      "unlocks": [
+        {
+          "type": "unlockCard",
+          "icon": "garage01",
+          "heading": "Fast Workshop II",
+          "description": "Identity changes take 90 seconds."
+        },
+        {
+          "type": "unlockCard",
+          "icon": "beamCurrency",
+          "heading": "Cheap Paperwork III",
+          "description": "Identity changes cost 30% less."
+        }
+      ]
+    },
+    {
+      "requiredValue": 174000,
+      "description": {
+        "type": "unlockCard",
+        "icon": "info",
+        "heading": "Level 41",
+        "description": "Reach Vehicle Theft level 41."
+      },
+      "unlocks": []
+    },
+    {
+      "requiredValue": 186000,
+      "description": {
+        "type": "unlockCard",
+        "icon": "info",
+        "heading": "Level 42",
+        "description": "Reach Vehicle Theft level 42."
+      },
+      "unlocks": []
+    },
+    {
+      "requiredValue": 198000,
+      "description": {
+        "type": "unlockCard",
+        "icon": "info",
+        "heading": "Level 43",
+        "description": "Reach Vehicle Theft level 43."
+      },
+      "unlocks": []
+    },
+    {
+      "requiredValue": 211000,
+      "description": {
+        "type": "unlockCard",
+        "icon": "info",
+        "heading": "Level 44",
+        "description": "Reach Vehicle Theft level 44."
+      },
+      "unlocks": []
+    },
+    {
+      "requiredValue": 225000,
+      "description": {
+        "type": "unlockCard",
+        "icon": "info",
+        "heading": "Level 45",
+        "description": "Reach Vehicle Theft level 45."
+      },
+      "unlocks": [
+        {
+          "type": "unlockCard",
+          "icon": "beamCurrency",
+          "heading": "Fence Contacts IV",
+          "description": "Underground buyers value your cars 12% higher."
+        }
+      ]
+    },
+    {
+      "requiredValue": 239000,
+      "description": {
+        "type": "unlockCard",
+        "icon": "info",
+        "heading": "Level 46",
+        "description": "Reach Vehicle Theft level 46."
+      },
+      "unlocks": []
+    },
+    {
+      "requiredValue": 254000,
+      "description": {
+        "type": "unlockCard",
+        "icon": "info",
+        "heading": "Level 47",
+        "description": "Reach Vehicle Theft level 47."
+      },
+      "unlocks": []
+    },
+    {
+      "requiredValue": 269000,
+      "description": {
+        "type": "unlockCard",
+        "icon": "info",
+        "heading": "Level 48",
+        "description": "Reach Vehicle Theft level 48."
+      },
+      "unlocks": []
+    },
+    {
+      "requiredValue": 285000,
+      "description": {
+        "type": "unlockCard",
+        "icon": "info",
+        "heading": "Level 49",
+        "description": "Reach Vehicle Theft level 49."
+      },
+      "unlocks": []
+    },
+    {
+      "requiredValue": 301000,
+      "description": {
+        "type": "unlockCard",
+        "icon": "info",
+        "heading": "Level 50",
+        "description": "Reach Vehicle Theft level 50."
+      },
+      "unlocks": [
+        {
+          "type": "unlockCard",
+          "icon": "badgeRoundStar",
+          "heading": "Ghost",
+          "description": "Underground buyers value your cars 15% higher. An unrepainted car is recognized 15% of the time and a handover is raided 10% of the time."
+        }
+      ]
+    }
+  ]
+}
