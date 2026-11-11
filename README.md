@@ -108,6 +108,10 @@ The mod supports one active vehicle theft case at a time. Store the stolen vehic
 
 The mod ships no automated tests. Theft, the ignition screen, storage, the identity change and the Underground app have been played in BeamNG 0.40.5 with RLS 2.8.0. The Vehicle Theft skill, its perks, the theft milestones and the identity countdown fix in 0.7.0 have been checked only by reading the code against RLS, not yet in the game. The Underground app reuses RLS's negotiation component and phone screen helper, so a future RLS update that moves those files would break the app's negotiation screen.
 
+## License
+
+This mod is released under the [MIT License](LICENSE). The license covers this mod's own files only. RLS Career Overhaul and BeamNG.drive are separate works under their own licenses and are not included.
+
 ## Changes
 
 - **0.7.0**: Vehicle Theft skill (50 levels, XP for each step of a theft, perks), six theft milestones, the skill on RLS's Skills page. The Underground app's countdowns keep running in every phase.
