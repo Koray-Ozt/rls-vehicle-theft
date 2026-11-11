@@ -301,6 +301,26 @@ local function rejectTransfer(id)
   return false
 end
 
+-- True once the stolen car has a new plate and a new colour: nothing links it to the theft report any more.
+local function disguised(case)
+  return case.identity ~= nil and repainted(case) ~= false
+end
+
+-- RLS speed and red-light cameras bill whoever owns the inventory record. While the stolen car still wears
+-- its original plate, the registered keeper is the previous owner, so the camera fine is not charged to the thief.
+local cameraFineLabels = {
+  ["ui.career.attributeLog.fineSpeeding"] = true,
+  ["ui.career.attributeLog.fineRedLight"] = true,
+}
+
+local function wearsOriginalPlate()
+  if not load() then return false end
+  local case = state.case
+  if not case or case.identity then return false end
+  local id = case.inventoryId and inventory().getVehicleIdFromInventoryId(case.inventoryId) or liveId
+  return id ~= nil and id == be:getPlayerVehicleID(0)
+end
+
 local function bind(owner, key, decorate)
   if not owner or type(owner[key]) ~= "function" then return end
   local existing = bindings[key]
@@ -339,6 +359,15 @@ local function bindRls()
         buttons[1].callback = guardTransfer(buttons[1].callback)
       end
       return original(buttons, title, ...)
+    end
+  end)
+  bind(overhaul_career_economy_payment, "pay", function(original)
+    return function(price, reason, ...)
+      if type(reason) == "table" and cameraFineLabels[reason.label] and wearsOriginalPlate() then
+        notify("Camera fine sent to the vehicle's registered owner.")
+        return true
+      end
+      return original(price, reason, ...)
     end
   end)
   bind(overhaul_career_progression_skillsPage, "getLandingPageData", decorateSkillsPage)
@@ -1459,7 +1488,7 @@ local function updateCase(now)
   end
 
   -- After the identity change only an unrepainted car can still be matched to the theft report.
-  if case.identity and repainted(case) ~= false then return end
+  if disguised(case) then return end
   local id = case.inventoryId and inventory().getVehicleIdFromInventoryId(case.inventoryId) or liveId
   local vehicle = id and getObjectByID(id)
   if not vehicle then
@@ -1548,7 +1577,8 @@ function M.onPursuitAction(id, action)
     -- Defer object removal until RLS has finished its own arrest handler.
     core_jobsystem.create(function(job)
       job.sleep(0.1)
-      if state and state.case == arrestedCase and (liveId == id or
+      -- A fully disguised car caught for an ordinary offence is just a car: RLS charges its normal fine.
+      if state and state.case == arrestedCase and not disguised(arrestedCase) and (liveId == id or
         (state.case.inventoryId and inventory().getVehicleIdFromInventoryId(state.case.inventoryId) == id)) then
         seize("Police identified the stolen vehicle.")
       end

@@ -1,6 +1,6 @@
 # RLS Vehicle Theft
 
-Version 0.7.0 adds vehicle theft to RLS Career Overhaul. Take a vehicle from the street or a dealership, store it in an owned garage, change its identity, and sell it to underground buyers from the **Underground** phone app. Police, vehicle damage, workshop costs, and fines can turn a sale into a loss.
+Version 0.7.1 adds vehicle theft to RLS Career Overhaul. Take a vehicle from the street or a dealership, store it in an owned garage, change its identity, and sell it to underground buyers from the **Underground** phone app. Police, vehicle damage, workshop costs, and fines can turn a sale into a loss.
 
 This is an unofficial add-on. It is not affiliated with RLS Modding or BeamNG GmbH.
 
@@ -112,6 +112,8 @@ Theft milestones appear with RLS's general milestones and pay money when claimed
 - **Taking a parked vehicle** goes unnoticed for 90–180 seconds if you match every signal cleanly. Each missed signal trips the alarm and shortens that time. Two or more nearby traffic vehicles act as witnesses and shorten it further.
 - Once a vehicle is reported, any patrol that spots it within about 160 m starts an RLS pursuit. After you evade a pursuit, patrols ignore the vehicle for 45 seconds.
 - A new identity hides the plate, not the paint. If the vehicle still has the colour it had when you stored it, each new patrol that sees you driving it has a 30% chance to recognize it and start a pursuit, and the underground handover has a 20% chance to be raided, which seizes the vehicle and charges the theft fine. The Underground app marks such a vehicle as risky.
+- **Camera fines** (speed and red-light cameras) are not charged to you while you drive the stolen car with its original plate; they go to the registered owner. Once the identity change is done, the car is yours and RLS charges them normally.
+- A car with a new plate **and** a new colour is no longer matched to the theft report. An ordinary police arrest for another offence charges the usual RLS fine but does not seize it.
 - An official marketplace listing can be published normally. If you try to complete the title transfer, the sale is canceled, the listing is removed, the vehicle is seized, and a fine is charged. The sale pays out nothing.
 - Stealing a vehicle from a company-affiliated dealer reduces that company's RLS reputation by 120 points during an inspection or 220 points during a test drive.
 - Test-drive theft suspends test-drive privileges at that dealership. A later investigation can issue a fine even after an underground sale.
@@ -148,7 +150,7 @@ This mod is released under the [MIT License](LICENSE). The license covers this m
 
 ## Changes
 
-- **Unreleased**: The controls menu now describes the key's current uses (parked, moving and dealership cars, storing).
+- **0.7.1**: Camera fines go to the original owner while the stolen car keeps its plate. A fully disguised car is no longer seized when RLS arrests you for an unrelated offence. The controls menu now describes the key's current uses (parked, moving and dealership cars, storing).
 - **0.7.0**: Vehicle Theft skill (50 levels, XP for each step of a theft, perks), six theft milestones, the skill on RLS's Skills page. The Underground app's countdowns keep running in every phase.
 - **0.6.1**: Carjack civilian cars driving below about 30 km/h.
 - **0.6.0**: Underground phone app with listings, timed offers from different buyer types, and negotiation. Replaces the single offer at the garage computer.
