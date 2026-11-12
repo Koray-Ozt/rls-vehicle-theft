@@ -42,10 +42,32 @@
           <h1>Underground</h1>
           <p>Off-the-books vehicle sales</p>
         </div>
+        <button class="ug-settings-toggle" :disabled="isCapturing" @click="settingsOpen = !settingsOpen">
+          {{ settingsOpen ? "Market" : "Settings" }}
+        </button>
       </header>
 
       <main class="ug-body">
-        <div v-if="!state" class="ug-empty">Connecting…</div>
+        <section v-if="settingsOpen" class="ug-settings">
+          <h2>Mod settings</h2>
+          <section class="ug-panel">
+            <strong>Take or store vehicle</strong>
+            <p class="ug-setting-copy">Choose a keyboard key, mouse button, or controller button. Mouse left-click, right-click and axis inputs are reserved. The action is available during gameplay; avoid an input already used by another game action.</p>
+            <div class="ug-current-bindings">
+              <span>Current binding</span>
+              <strong v-if="shortcutBindings.length">{{ shortcutBindings.map(bindingLabel).join(" · ") }}</strong>
+              <strong v-else>Loading binding…</strong>
+            </div>
+            <button class="ug-btn primary" :disabled="isCapturing" @click="captureShortcut">
+              {{ isCapturing ? "Press a key or button…" : "Change binding" }}
+            </button>
+            <p v-if="isCapturing" class="ug-hint">Press Esc to cancel. Axis controls are not supported for this action.</p>
+            <p v-if="bindingStatus" class="ug-binding-status" role="status">{{ bindingStatus }}</p>
+          </section>
+          <button class="ug-link" :disabled="isCapturing" @click="settingsOpen = false">Back to Underground</button>
+        </section>
+
+        <div v-else-if="!state" class="ug-empty">Connecting…</div>
         <div v-else-if="!state.available" class="ug-empty">Only available in an RLS career.</div>
 
         <template v-else>
@@ -180,19 +202,27 @@
 </template>
 
 <script setup>
-import { computed, onMounted, onUnmounted, ref, shallowRef, watch } from "vue"
+import { computed, nextTick, onMounted, onUnmounted, ref, shallowRef, watch } from "vue"
 import { icons } from "@/common/components/base"
 import { useBridge } from "@/bridge"
+import useControls from "@/services/controls"
 import NegotiationChatWindow from "../rls_career_overhaul/overhaul/modules/career/components/negotiation/NegotiationChatWindow.vue"
 import { usePhoneScreen } from "../rls_career_overhaul/overhaul/modules/career/composables/usePhoneScreen.js"
 
 const { api, events } = useBridge()
+const controls = useControls()
+const theftAction = "rlsVehicleTheftAttempt"
 const eventName = "RlsTheftUnderground"
 const state = shallowRef(null)
 const thumbBroken = ref(false)
 const editingPrice = ref(false)
 const priceText = ref("")
+const settingsOpen = ref(false)
+const shortcutBindings = shallowRef([])
+const bindingStatus = ref("")
+const isCapturing = ref(false)
 let mounted = false
+let shortcutRefreshTimers = []
 
 const vehicle = computed(() => state.value?.vehicle || null)
 const offers = computed(() => state.value?.offers || [])
@@ -208,6 +238,73 @@ const money = value => `$${Math.round(Number(value) || 0).toLocaleString()}`
 const clock = seconds => {
   const s = Math.max(0, Math.round(Number(seconds) || 0))
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`
+}
+
+function refreshShortcutBindings() {
+  shortcutBindings.value = controls.findAllBindingsForAction(theftAction, undefined, true)
+    .map(binding => ({ control: binding.control, devName: binding.devName }))
+}
+
+function bindingLabel(binding) {
+  const device = binding.devName?.startsWith("mouse") ? "Mouse"
+    : binding.devName?.startsWith("keyboard") ? "Keyboard" : binding.devName || "Controller"
+  const control = String(binding.control || "").replace(/\bctrl\b/g, "Ctrl").replace(/\bshift\b/g, "Shift")
+  return `${device}: ${control}`
+}
+
+function cancelCaptureOnEscape(data) {
+  if (isCapturing.value && data.controlType === "key" && /^(esc|escape)$/.test(data.control) && data.value > 0) {
+    controls.cancelCaptureBinding()
+  }
+}
+
+async function captureShortcut() {
+  bindingStatus.value = ""
+  isCapturing.value = true
+  await nextTick()
+  await new Promise(resolve => setTimeout(resolve, 100)) // Ignore the click that started capture.
+  events.on("RawInputChanged", cancelCaptureOnEscape)
+  try {
+    const captured = await controls.captureBinding(true, theftAction)
+    if (captured.controlType === "axis") {
+      bindingStatus.value = "That is an axis input. Choose a key or button instead."
+      return
+    }
+    if (captured.devName?.startsWith("mouse") && captured.control === "button0") {
+      bindingStatus.value = "Left-click is reserved for the interface. Choose a different mouse button."
+      return
+    }
+
+    const existing = controls.findAllBindingsForAction(theftAction, undefined, true)
+    if (!existing.length) {
+      bindingStatus.value = "Could not find the current binding. Reopen the app and try again."
+      return
+    }
+    if (!controls.getBindingDetails(captured.devName, captured.control, theftAction)) {
+      bindingStatus.value = "That input device is unavailable. Reconnect it and try again."
+      return
+    }
+
+    controls.deleteBindings(existing.map(binding => ({
+      devname: binding.devName,
+      control: binding.control,
+      action: theftAction,
+    })))
+    controls.addNewBinding({
+      devname: captured.devName,
+      ...controls.defaultBindingEntry(theftAction, captured.control),
+      action: theftAction,
+      control: captured.control,
+    })
+    bindingStatus.value = "Binding saved."
+    setTimeout(refreshShortcutBindings, 250)
+  } catch {
+    bindingStatus.value = "Binding change cancelled."
+  } finally {
+    events.off("RawInputChanged", cancelCaptureOnEscape)
+    isCapturing.value = false
+    refreshShortcutBindings()
+  }
 }
 
 const price = computed(() => Math.max(0, Math.round(Number(String(priceText.value).replace(/[^\d]/g, "")) || 0)))
@@ -265,7 +362,10 @@ usePhoneScreen({
 
 onMounted(() => {
   mounted = true
+  controls.setup()
+  refreshShortcutBindings()
   events.on(eventName, applyState)
+  shortcutRefreshTimers = [250, 1000].map(delay => setTimeout(refreshShortcutBindings, delay))
   call("undergroundSetOpen(true)")
   api.engineLua("rlsVehicleTheft and rlsVehicleTheft.getUndergroundState()", next => {
     if (next) applyState(next)
@@ -275,6 +375,9 @@ onMounted(() => {
 
 onUnmounted(() => {
   mounted = false
+  shortcutRefreshTimers.forEach(clearTimeout)
+  if (isCapturing.value) controls.cancelCaptureBinding()
+  events.off("RawInputChanged", cancelCaptureOnEscape)
   events.off(eventName, applyState)
   call("undergroundSetOpen(false)")
   if (negotiation.value && !negotiation.value.result) call("undergroundCancelNegotiation()")
@@ -325,6 +428,24 @@ onUnmounted(() => {
   h1 { margin: 0; font-size: 1.25rem; letter-spacing: 0.02em; }
   p { margin: 0.1rem 0 0; color: var(--ug-muted); font-size: 0.75rem; }
 }
+.ug-settings-toggle {
+  margin-left: auto;
+  padding: 0.4rem 0.65rem;
+  border: 1px solid var(--ug-line);
+  border-radius: 0.5rem;
+  background: #262932;
+  color: var(--ug-text);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  &:disabled { opacity: 0.45; cursor: default; }
+}
+.ug-settings { display: grid; gap: 0.7rem; }
+.ug-settings h2 { margin: 0; font-size: 1rem; }
+.ug-setting-copy { margin: 0.4rem 0 0.7rem; color: var(--ug-muted); line-height: 1.4; }
+.ug-current-bindings { display: grid; gap: 0.2rem; margin: 0.4rem 0; }
+.ug-current-bindings span, .ug-binding-status { color: var(--ug-muted); font-size: 0.75rem; }
+.ug-binding-status { margin: 0.5rem 0 0; }
 
 .ug-logo {
   flex: none;

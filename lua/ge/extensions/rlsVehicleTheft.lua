@@ -966,6 +966,8 @@ local function updateIgnition(dt)
 end
 
 function M.attempt()
+  -- Global action bindings can fire while the phone UI has focus (notably mouse buttons).
+  if appOpen then return end
   if not load() or not gameplay_traffic or not gameplay_walk or not overhaul_integration_services_police then return end
   bindRls()
   local player = walkingPlayer()

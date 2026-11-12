@@ -16,7 +16,7 @@ This mod is an add-on for RLS Career Overhaul. It does **not** include RLS and d
 
 At runtime the mod calls RLS's career, garage, police, parking, marketplace, payment, skills and milestone systems. The Underground phone app also loads two files from inside RLS: the negotiation screen (`components/negotiation/NegotiationChatWindow.vue`) and the phone screen helper (`composables/usePhoneScreen.js`). An RLS update that renames or moves these may break the mod until it is updated.
 
-The mod has no other dependencies and does not edit any RLS or BeamNG file on disk. It ships one patched copy of an RLS UI file (see below) that BeamNG's virtual file system loads in place of the original.
+The mod has no other dependencies and does not modify installed RLS or BeamNG game files. Custom control bindings are saved by BeamNG in the user's settings. The mod ships one patched copy of an RLS UI file (see below) that BeamNG's virtual file system loads in place of the original.
 
 ## Installation
 
@@ -34,15 +34,15 @@ To build the ZIP yourself, compress the folders `gameplay`, `lua`, `scripts`, `s
 
 | Key | When | What it does |
 |---|---|---|
-| **Ctrl + Shift + J** | On foot, at the door of a parked civilian car | Start taking it. Stay beside the car for 4 seconds. |
-| **Ctrl + Shift + J** | On foot, next to a civilian car driving below about 30 km/h | Flag it down. The driver stops; stay next to the car for 2.5 seconds. |
-| **Ctrl + Shift + J** | Inspecting a dealership car, or driving it on a test drive | Take that car. |
-| **Ctrl + Shift + J** | Driving the stolen car, parked inside a garage you own | Store it. Getting out inside the garage stores it too. |
+| **Default: Ctrl + Shift + J** | On foot, at the door of a parked civilian car | Start taking it. Stay beside the car for 4 seconds. |
+| **Default: Ctrl + Shift + J** | On foot, next to a civilian car driving below about 30 km/h | Flag it down. The driver stops; stay next to the car for 2.5 seconds. |
+| **Default: Ctrl + Shift + J** | Inspecting a dealership car, or driving it on a test drive | Take that car. |
+| **Default: Ctrl + Shift + J** | Driving the stolen car, parked inside a garage you own | Store it. Getting out inside the garage stores it too. |
 | **Space** or **Enter** | Ignition Bypass screen | **Begin**, then **Lock signal** when the white marker is in the green zone. The buttons work with the mouse as well. |
 | **Cancel** button | Ignition Bypass screen | Give up the attempt. |
 | Phone **Back** | Underground app | Leave a negotiation; press again to close the app. |
 
-To change the key, open BeamNG's controls settings and look for **RLS Vehicle Theft: Take or store vehicle** in the Gameplay category.
+Change the shortcut in **Underground phone app → Settings → Change binding**. Keyboard keys, mouse buttons other than left-click, and controller buttons are supported; right-click and axes are reserved. You can also change it in BeamNG's Controls settings under **RLS Vehicle Theft: Take or store vehicle**.
 
 ### What to install and where to go
 
@@ -58,16 +58,16 @@ To change the key, open BeamNG's controls settings and look for **RLS Vehicle Th
 
 ### At a glance
 
-1. Take a car (**Ctrl + Shift + J**) and start it (ignition bypass if the engine is off).
+1. Take a car with the configured shortcut (default **Ctrl + Shift + J**) and start it (ignition bypass if the engine is off).
 2. Lose the police, then park inside a garage you own and get out.
 3. At the garage computer: **Change vehicle identity**, and repaint it.
 4. In the **Underground** app: set a price, **List for sale**, then accept or negotiate an offer.
 
 ## Playing
 
-1. **Take a vehicle.** In RLS Career, walk up to the door of a parked or stopped civilian vehicle, press **Ctrl + Shift + J** and stay beside it for 4 seconds. You can also carjack a civilian car that is still driving below about 30 km/h: step next to it (within about 6 m) and press the shortcut. The driver brakes to a stop; stay next to the car for 2.5 seconds and it is yours. Walk away first and the car drives off again. The same shortcut works while inspecting a dealership vehicle or driving it during a dealership test drive.
+1. **Take a vehicle.** In RLS Career, walk up to the door of a parked or stopped civilian vehicle, press your configured shortcut (default **Ctrl + Shift + J**) and stay beside it for 4 seconds. You can also carjack a civilian car that is still driving below about 30 km/h: step next to it (within about 6 m) and press the shortcut. The driver brakes to a stop; stay next to the car for 2.5 seconds and it is yours. Walk away first and the car drives off again. The same shortcut works while inspecting a dealership vehicle or driving it during a dealership test drive.
 2. **Start the engine.** A stopped traffic vehicle already has its engine running, so you take it without the bypass. If the engine is off, select **Begin** on the **Ignition Bypass** screen. Press **Lock signal** (or **Space**) when the white marker is in the green zone. Match all three signals within 25 seconds. A miss costs 4 seconds; if the time runs out, wait 8 seconds before trying again. Vehicle Theft perks widen the target zone and shorten the miss penalty. If the engine starts but the parking brake is on, release it before driving.
-3. **Store it.** Lose any active pursuit and park the vehicle inside a garage you own. Press **Ctrl + Shift + J**, or simply get out; the vehicle is stored automatically. It uses a normal garage slot. A vehicle left at the entrance is not stored, because the garage computer only lists vehicles inside the garage.
+3. **Store it.** Lose any active pursuit and park the vehicle inside a garage you own. Press your configured shortcut, or simply get out; the vehicle is stored automatically. It uses a normal garage slot. A vehicle left at the entrance is not stored, because the garage computer only lists vehicles inside the garage.
 4. **Change its identity and repaint it.** At the garage computer, select the vehicle and choose **Change vehicle identity**. This also gives it a new plate. The work costs 23% of the car's value (at least $1,200) and takes 150 seconds; Vehicle Theft perks make it cheaper and faster. The Underground app counts down the remaining time. Repaint it with the RLS painting option on the same computer: the theft report describes the colour it had when you stored it.
 5. **Sell it from the Underground phone app.** Install **Underground** from the phone's App Store once. When the identity change is done, open the app, set an asking price and choose **List for sale**. Buyers send offers over time; each offer expires after a few minutes, and up to four can wait at once. For each offer choose **Accept**, **Decline** or **Negotiate**. You can sell from anywhere; the vehicle is handed over and the money is paid at once.
 
@@ -139,7 +139,7 @@ Everything lives in this mod's ZIP; no RLS file is edited. BeamNG merges all mod
 | `ui/ui-vue/mods/rls_vehicle_theft/IgnitionBypass.vue` | The ignition bypass screen |
 | `ui/images/rls_vehicle_theft/underground.png` | The Underground app icon |
 | `gameplay/overhaul/ui/routes/rls-theft-routes.json` | The ignition screen's UI route |
-| `lua/ge/extensions/core/input/actions/rls_vehicle_theft.json`, `settings/inputmaps/keyboard_rls_vehicle_theft.json` | The **Ctrl + Shift + J** action and binding |
+| `lua/ge/extensions/core/input/actions/rls_vehicle_theft.json`, `settings/inputmaps/keyboard_rls_vehicle_theft.json` | The take/store action and its default **Ctrl + Shift + J** binding |
 | `ui/ui-vue/mods/rls_career_overhaul/overhaul/modules/career/composables/usePhoneSkillsData.js` | A copy of RLS's phone Skills data file (AGPL-3.0, header kept) with Vehicle Theft added to its fixed list of visible skills. Three added lines; an RLS update to this file is overridden by it |
 | `scripts/rls_vehicle_theft/modScript.lua` | Loads the extension |
 
@@ -166,6 +166,8 @@ This mod is released under the [MIT License](LICENSE). The license covers this m
 - The Underground app shows each case's heat state, time to its next stage, payout rate, and what actions affect it.
 - Patrol sightings that start a pursuit or recognize the original paint refresh the hot and warm periods. Changing the plate caps heat at Warm while the original paint remains; changing the plate and paint makes the vehicle Cold.
 - Buyer messages now explain the risk discount on Hot and Warm vehicles.
+- The Underground app has a Settings page for changing the take/store action binding to a keyboard key, mouse button or controller button. BeamNG saves the binding in the user's input settings.
+- The shortcut does not run while the Underground app has focus, preventing a mouse binding from triggering during phone interactions.
 
 **Changed**
 - Police report timing and the vehicle's heat timers are stored separately, preserving existing report delays while allowing patrol sightings to refresh heat.
