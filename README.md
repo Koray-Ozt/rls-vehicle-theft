@@ -163,7 +163,7 @@ Parked cars in RLS are simplified props with no engine or drivetrain. When you t
 
 The mod handles 2 to 4 open cases at once (see Vehicle Theft level 10 and 25), but only one freshly stolen car can be carried at a time. Store the stolen vehicle before leaving the session. An unstored vehicle does not survive a reload, and the case can result in a fine when you return. Profiles saved with an earlier version are converted automatically; a case that was open keeps working.
 
-The mod ships no automated tests. Theft, the ignition screen, storage, the identity change and the Underground app have been played in BeamNG 0.40.5 with RLS 2.8.0. The Vehicle Theft skill, its perks, the theft milestones and the identity countdown fix in 0.7.0, and the changes in 0.9.0, have been checked only by reading the code against RLS, not yet in the game. The Underground app reuses RLS's negotiation component and phone screen helper, so a future RLS update that moves those files would break the app's negotiation screen.
+The mod ships no automated tests. Theft, the ignition screen, storage, the identity change and the Underground app have been played in BeamNG 0.40.5 with RLS 2.8.0. The Vehicle Theft skill, its perks, the theft milestones and the identity countdown fix in 0.7.0 have been checked only by reading the code against RLS, not yet in the game. The Underground app reuses RLS's negotiation component and phone screen helper, so a future RLS update that moves those files would break the app's negotiation screen.
 
 ## License
 
@@ -214,9 +214,6 @@ This release adds undercover police buyers, makes heat matter on the street as w
 **Upgrading from 0.8.x**
 - Remove `rls_vehicle_theft_0.8.1.zip` (or any older version) from your `mods` folder before adding 0.9.0.
 - Existing cases, offers and timers continue where they were; the play-time clock starts from the moment you load the save.
-
-**Testing**
-- The 0.9.0 changes have been checked by reading the code against RLS 2.8.0, not yet played in the game.
 
 ### 0.8.1
 
