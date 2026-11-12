@@ -1,0 +1,70 @@
+# Builds the mod zip from the current main branch and publishes it to a GitHub release.
+# Run it from the Actions tab (or the API) with the release tag, e.g. v0.9.0.
+# - The zip holds only the mod folders (gameplay, lua, scripts, settings, ui), as BeamNG expects.
+# - An existing asset with the same name is replaced; the release is created if it does not exist.
+# - The release notes are taken from the README's "### <version>" changelog section.
+# The tag itself is never moved.
+name: Publish release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag, e.g. v0.9.0"
+        required: true
+      update_notes:
+        description: "Replace the release notes with the README changelog section"
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ inputs.tag }}
+      UPDATE_NOTES: ${{ inputs.update_notes }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate tag
+        run: |
+          if ! [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Tag must look like v1.2.3, got '$TAG'"
+            exit 1
+          fi
+          echo "VERSION=${TAG#v}" >> "$GITHUB_ENV"
+
+      - name: Build mod zip
+        run: |
+          ZIP="rls_vehicle_theft_${VERSION}.zip"
+          git archive --format=zip -o "$ZIP" HEAD gameplay lua scripts settings ui
+          unzip -l "$ZIP"
+          echo "ZIP=$ZIP" >> "$GITHUB_ENV"
+
+      - name: Extract changelog section
+        run: |
+          awk -v header="### ${VERSION}" '
+            $0 == header { found = 1; next }
+            found && /^### / { exit }
+            found { print }
+          ' README.md > notes.md
+          if ! grep -q '[^[:space:]]' notes.md; then
+            echo "::error::README has no '### ${VERSION}' changelog section"
+            exit 1
+          fi
+
+      - name: Publish
+        run: |
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            gh release upload "$TAG" "$ZIP" --clobber
+            if [ "$UPDATE_NOTES" = "true" ]; then
+              gh release edit "$TAG" --notes-file notes.md
+            fi
+          else
+            gh release create "$TAG" "$ZIP" --target "$GITHUB_SHA" \
+              --title "RLS Vehicle Theft ${VERSION}" --notes-file notes.md
+          fi
