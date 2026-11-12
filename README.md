@@ -1,6 +1,6 @@
 # RLS Vehicle Theft
 
-Version 0.8.1 adds a clearer hot vehicle system to the vehicle theft feature in RLS Career Overhaul. Take a vehicle from the street or a dealership, store it in an owned garage, change its identity, and sell it to underground buyers from the **Underground** phone app. Police, vehicle damage, workshop costs, and fines can turn a sale into a loss.
+Version 0.9.0 adds undercover police buyers, makes heat matter on the street as well as at the sale, and fixes a set of gameplay inconsistencies in the vehicle theft feature for RLS Career Overhaul. Take a vehicle from the street or a dealership, store it in an owned garage, change its identity, and sell it to underground buyers from the **Underground** phone app. Police, vehicle damage, workshop costs, and fines can turn a sale into a loss.
 
 This is an unofficial add-on. It is not affiliated with RLS Modding or BeamNG GmbH.
 
@@ -39,7 +39,7 @@ To build the ZIP yourself, compress the folders `gameplay`, `lua`, `scripts`, `s
 | **Default: Ctrl + Shift + J** | Inspecting a dealership car, or driving it on a test drive | Take that car. |
 | **Default: Ctrl + Shift + J** | Driving the stolen car, parked inside a garage you own | Store it. Getting out inside the garage stores it too. |
 | **Space** or **Enter** | Ignition Bypass screen | **Begin**, then **Lock signal** when the white marker is in the green zone. The buttons work with the mouse as well. |
-| **Cancel** button | Ignition Bypass screen | Give up the attempt. |
+| **Cancel** button | Ignition Bypass screen | Give up the attempt. After **Begin** this counts like a failed attempt: wait 8 seconds, and the misses stay on that car. |
 | Phone **Back** | Underground app | Leave a negotiation; press again to close the app. |
 
 Change the shortcut in **Underground phone app → Settings → Change binding**. Keyboard keys, mouse buttons other than left-click, and controller buttons are supported; right-click and axes are reserved. You can also change it in BeamNG's Controls settings under **RLS Vehicle Theft: Take or store vehicle**.
@@ -59,27 +59,36 @@ Change the shortcut in **Underground phone app → Settings → Change binding**
 ### At a glance
 
 1. Take a car with the configured shortcut (default **Ctrl + Shift + J**) and start it (ignition bypass if the engine is off).
-2. Lose the police, then park inside a garage you own and get out.
+2. Lose the police, then stop inside a garage you own. The theft XP is paid when the car is stored.
 3. At the garage computer: **Change vehicle identity**, and repaint it.
 4. In the **Underground** app: set a price, **List for sale**, then accept or negotiate an offer.
 
 ## Playing
 
 1. **Take a vehicle.** In RLS Career, walk up to the door of a parked or stopped civilian vehicle, press your configured shortcut (default **Ctrl + Shift + J**) and stay beside it for 4 seconds. You can also carjack a civilian car that is still driving below about 30 km/h: step next to it (within about 6 m) and press the shortcut. The driver brakes to a stop; stay next to the car for 2.5 seconds and it is yours. Walk away first and the car drives off again. The same shortcut works while inspecting a dealership vehicle or driving it during a dealership test drive.
-2. **Start the engine.** A stopped traffic vehicle already has its engine running, so you take it without the bypass. If the engine is off, select **Begin** on the **Ignition Bypass** screen. Press **Lock signal** (or **Space**) when the white marker is in the green zone. Match all three signals within 25 seconds. A miss costs 4 seconds; if the time runs out, wait 8 seconds before trying again. Vehicle Theft perks widen the target zone and shorten the miss penalty. If the engine starts but the parking brake is on, release it before driving.
-3. **Store it.** Lose any active pursuit and park the vehicle inside a garage you own. Press your configured shortcut, or simply get out; the vehicle is stored automatically. It uses a normal garage slot. A vehicle left at the entrance is not stored, because the garage computer only lists vehicles inside the garage.
-4. **Change its identity and repaint it.** At the garage computer, select the vehicle and choose **Change vehicle identity**. This also gives it a new plate. The work costs 23% of the car's value (at least $1,200) and takes 150 seconds; Vehicle Theft perks make it cheaper and faster. The Underground app counts down the remaining time. Repaint it with the RLS painting option on the same computer: the theft report describes the colour it had when you stored it.
-5. **Sell it from the Underground phone app.** Install **Underground** from the phone's App Store once. When the identity change is done, open the app, set an asking price and choose **List for sale**. Buyers send offers over time; each offer expires after a few minutes, and up to four can wait at once. For each offer choose **Accept**, **Decline** or **Negotiate**. You can sell from anywhere; the vehicle is handed over and the money is paid at once.
+2. **Start the engine.** A stopped traffic vehicle already has its engine running, so you take it without the bypass. If the engine is off, select **Begin** on the **Ignition Bypass** screen. Press **Lock signal** (or **Space**) when the white marker is in the green zone. Match all three signals within 25 seconds. A miss costs 4 seconds; if the time runs out, wait 8 seconds before trying again. Canceling a started attempt (or closing the screen) counts the same way: the 8-second wait applies and the alarm your misses tripped stays tripped on the next try at that car. Vehicle Theft perks widen the target zone and shorten the miss penalty. If the engine starts but the parking brake is on, release it before driving.
+3. **Store it.** Lose any active pursuit and stop the vehicle inside a garage you own. It is stored after a few seconds standing still, when you get out, or when you press your configured shortcut. It uses a normal garage slot. A vehicle left at the entrance is not stored, because the garage computer only lists vehicles inside the garage. The XP and the theft milestones for taking the car are counted at this point.
+4. **Change its identity and repaint it.** At the garage computer, select the vehicle and choose **Change vehicle identity**. This also gives it a new plate. The work costs 23% of the car's value (at least $1,200) and takes 150 seconds; Vehicle Theft perks make it cheaper and faster. The Underground app counts down the remaining time. If you drive the car out of the garage before it is done, the work stops and the fee is refunded. Repaint it with the RLS painting option on the same computer: the theft report describes the colour it had when you stored it.
+5. **Sell it from the Underground phone app.** Install **Underground** from the phone's App Store once. When the identity change is done, open the app, set an asking price and choose **List for sale**. Buyers send offers over time; each offer expires after a few minutes, and up to four can wait at once. For each offer choose **Accept**, **Decline** or **Negotiate**. You can sell from anywhere, but buyers only meet a parked car: not while you are driving it and never while the police are chasing it. The vehicle is handed over and the money is paid at once.
 
-**Or ditch it, or chop it.** If you do not want to keep a stolen car, there are two ways out. Walk about 120 m away from a car you have not stored, with no police on you, and you leave it behind: no theft fine, no payout, and the car is towed. Once a car is stored, you can skip the identity change and choose **Strip for parts** at the garage computer. It takes 90 seconds, needs no repaint, has no raid risk and pays about 34% of the car's value (Vehicle Theft perks raise it by up to 15%), less than an Underground sale but with no identity fee. If you drive the car out of the garage before the crew finishes, the job is cancelled and nothing is paid.
+**Or ditch it, or chop it.** If you do not want to keep a stolen car, there are two ways out. Walk about 120 m away from a car you have not stored, with no police on you, and you leave it behind: no theft fine, but no payout and no XP, and the car is towed. A test-drive car is the exception: the dealership knows who took it and its investigation still ends in a fine. Once a car is stored, you can skip the identity change and choose **Strip for parts** at the garage computer. It takes 90 seconds, needs no repaint and has no raid risk. The chop shop pays 26% of the car's value when it is Cold, 23% when Warm and 20% when Hot (Vehicle Theft perks raise it by up to 15%). That is less than an average Underground sale after the identity fee, but quick and safe. If you drive the car out of the garage before the crew finishes, the job is cancelled and nothing is paid.
 
 **Several cars at once.** You can hold up to 2 open cases at the same time: each stored car, whether it is waiting, being disguised, stripped or listed, counts as one. Vehicle Theft level 10 raises the limit to 3 and level 25 to 4. You can only carry one freshly stolen car at a time: store it, sell it or ditch it before taking the next. Pick which car the **Underground** app shows with the buttons at its top; the garage computer lists the actions for each stored car separately. More open cases means more heat (see Consequences).
 
 ### Asking price and negotiation
 
-The app shows the vehicle's heat state, the time until it cools, and why its value is reduced. A fresh report is **Hot** for 2 minutes at 54% of normal sell value, then **Warm** for 4 minutes at 58%, and then **Cold** at 61% (Vehicle Theft perks raise each rate by up to 15%). A patrol sighting that starts a pursuit or recognizes the original paint refreshes both timers. Changing the plate caps heat at Warm while the original paint remains; changing the plate and repainting it breaks the match and makes it Cold. Buyers explain hot and warm offers in their messages. Listing below the shown underground value brings offers sooner and closer to your price; listing well above it makes buyers rarer and keeps their offers near the underground value. This follows the RLS marketplace.
+The app shows the vehicle's heat state, the time until it cools, and why its value is reduced. A fresh report is **Hot** for 2 minutes at 54% of normal sell value, then **Warm** for 4 minutes at 58%, and then **Cold** at 61% (Vehicle Theft perks raise each rate by up to 15%). Heat also decides how close a patrol has to get to spot the car (see Consequences). A patrol sighting that starts a pursuit or recognizes the original paint refreshes both timers. Changing the plate caps heat at Warm while the original paint remains, until a patrol recognizes that paint: then the car is Hot again. Changing the plate and repainting it breaks the match and makes it Cold. Buyers explain hot and warm offers in their messages. Listing below the shown underground value brings offers sooner and closer to your price; listing well above it makes buyers rarer and keeps their offers near the underground value. This follows the RLS marketplace.
 
 Negotiation uses the RLS negotiation screen. Each counter-offer costs the buyer patience, more so the further your price is from the underground value. A buyer moves part of the way toward your price, never past their budget, and walks away when their patience runs out, which removes the offer. Buyer types differ: chop shops pay least and lose patience fastest, exporters pay most and stay longest.
+
+### Undercover buyers
+
+Some buyers are undercover police: 2% of offers for a Cold car, 3% for a Warm one and 4% for a Hot one. They look like any other buyer. The only tells are an offer that is a little too good and a buyer who stays unusually patient in a negotiation. Accepting their offer, directly or after negotiating, is a sting instead of a sale:
+
+- The deal is off and nothing is paid. The car stays yours, but the police now know its new plate and the colour the buyer saw. It is a freshly reported car again: to sell it you need another identity change (a new plate series) and another repaint.
+- If you are driving when the sting springs, unmarked units start a pursuit at once. If you are on foot, the chase starts the next time you drive any vehicle within 10 minutes.
+- Lose them and the operation ends (+15 XP, counts for Ghost Driver). Get arrested and the stung car is seized and the theft fine charged, on top of RLS's own arrest fine.
+- Until then no workshop or chop shop touches the car, and the Underground app shows the operation's state.
 
 ## Vehicle Theft skill and milestones
 
@@ -90,8 +99,9 @@ Negotiation uses the RLS negotiation screen. Each counter-offer costs the buyer 
 | Take a car from its driver | 12 |
 | Take a parked car (bypass with a miss / without a miss) | 15 / 20 |
 | Take a dealership car (inspection / test drive) | 15 / 20 |
-| Store it in your garage | 10 |
+| Store it in your garage | 10, plus the XP for taking it (paid only once the car is stored) |
 | Lose the police in a stolen car (first three times per car) | 10 |
+| Escape an undercover sting | 15 |
 | Finish the identity change | 5 |
 | Strip a car for parts | 10 + 1 per $500 of the price (at most +30) |
 | Underground sale | 15 + 1 per $400 of the price (at most +45), +5 when negotiated above the opening offer |
@@ -111,20 +121,22 @@ A full theft usually earns 60–100 XP: level 5 takes roughly 15–20 thefts and
 | 30 | Underground offers arrive 15% sooner |
 | 35 / 50 | Unrepainted car: patrol recognition 22% / 15% instead of 30%, handover raid 15% / 10% instead of 20% |
 
-Theft milestones appear with RLS's general milestones and pay money when claimed: **Car Thief** (vehicles stolen), **Carjacker** (cars taken from their drivers), **Clean Hands** (ignitions bypassed without a miss), **Ghost Driver** (police lost in a stolen car), **Fence** (underground sales) and **Underground Earnings** (total underground income). Rewards follow RLS's own milestone payouts: $100 per tier for the first four and $250 per tier for the two selling milestones. Counting starts with this version; earlier thefts are not included.
+Theft milestones appear with RLS's general milestones and pay money when claimed: **Car Thief** (vehicles stolen), **Carjacker** (cars taken from their drivers), **Clean Hands** (ignitions bypassed without a miss), **Ghost Driver** (police lost in a stolen car), **Fence** (underground sales) and **Underground Earnings** (total underground income). Rewards follow RLS's own milestone payouts: $100 per tier for the first four and $250 per tier for the two selling milestones. A theft counts for Car Thief, Carjacker and Clean Hands once the car is stored. Counting started with 0.7.0; earlier thefts are not included.
 
 ## Consequences
 
 - **Taking a traffic vehicle from its driver** is reported at once, and the nearest police unit starts a pursuit right away, even if it has not seen you yet.
 - **Taking a parked vehicle** goes unnoticed for 90–180 seconds if you match every signal cleanly. Each missed signal trips the alarm and shortens that time. Two or more nearby traffic vehicles act as witnesses and shorten it further.
-- Once a vehicle is reported, any patrol that spots it within about 160 m starts an RLS pursuit and refreshes its hot period. After you evade a pursuit, patrols ignore the vehicle for 45 seconds.
-- A new identity hides the plate, not the paint. If the vehicle still has the colour it had when you stored it, each new patrol that sees you driving it has a 30% chance to recognize it and start a pursuit, and the underground handover has a 20% chance to be raided, which seizes the vehicle and charges the theft fine. The Underground app marks such a vehicle as risky.
+- Once a vehicle is reported, a patrol that spots it starts an RLS pursuit and refreshes its hot period. How close the patrol has to be depends on heat: about 160 m while Hot, 100 m while Warm and 60 m once Cold. After you evade a pursuit, patrols ignore the vehicle for 45 seconds.
+- A new identity hides the plate, not the paint. If the vehicle still has the colour it had when you stored it, each new patrol that sees you driving it (within the same heat-based range) has a 30% chance to recognize it and start a pursuit, half that once the report is Cold. The underground handover has a 20% chance to be raided, which seizes the vehicle and charges the theft fine. The Underground app marks such a vehicle as risky and shows the current raid chance.
 - **Holding several cars raises the heat.** Each case you already have open makes the next report come in about 35% sooner, and raises the chance that a patrol recognizes an unrepainted car or that a handover is raided by 15% per extra case.
 - **Camera fines** (speed and red-light cameras) are not charged to you while you drive the stolen car with its original plate; they go to the registered owner. Once the identity change is done, the car is yours and RLS charges them normally.
 - A car with a new plate **and** a new colour is no longer matched to the theft report. An ordinary police arrest for another offence charges the usual RLS fine but does not seize it.
 - An official marketplace listing can be published normally. If you try to complete the title transfer, the sale is canceled, the listing is removed, the vehicle is seized, and a fine is charged. The sale pays out nothing.
 - Stealing a vehicle from a company-affiliated dealer reduces that company's RLS reputation by 120 points during an inspection or 220 points during a test drive.
-- Test-drive theft suspends test-drive privileges at that dealership. A later investigation can issue a fine even after an underground sale.
+- Test-drive theft suspends test-drive privileges at that dealership. A later investigation issues a fine after the car is sold, stripped or left behind.
+- A stolen car that leaves your inventory some other way (not through the Underground app, the chop shop or a seizure) is still on record: the theft fine is charged and you are told why.
+- All timers (reports, heat, workshop jobs, offers, test-drive bans and investigations) run on play time. They keep running while the game is paused or the phone is open, but stop while the game is closed.
 
 ## What the mod contains
 
@@ -151,13 +163,60 @@ Parked cars in RLS are simplified props with no engine or drivetrain. When you t
 
 The mod handles 2 to 4 open cases at once (see Vehicle Theft level 10 and 25), but only one freshly stolen car can be carried at a time. Store the stolen vehicle before leaving the session. An unstored vehicle does not survive a reload, and the case can result in a fine when you return. Profiles saved with an earlier version are converted automatically; a case that was open keeps working.
 
-The mod ships no automated tests. Theft, the ignition screen, storage, the identity change and the Underground app have been played in BeamNG 0.40.5 with RLS 2.8.0. The Vehicle Theft skill, its perks, the theft milestones and the identity countdown fix in 0.7.0 have been checked only by reading the code against RLS, not yet in the game. The Underground app reuses RLS's negotiation component and phone screen helper, so a future RLS update that moves those files would break the app's negotiation screen.
+The mod ships no automated tests. Theft, the ignition screen, storage, the identity change and the Underground app have been played in BeamNG 0.40.5 with RLS 2.8.0. The Vehicle Theft skill, its perks, the theft milestones and the identity countdown fix in 0.7.0, and the changes in 0.9.0, have been checked only by reading the code against RLS, not yet in the game. The Underground app reuses RLS's negotiation component and phone screen helper, so a future RLS update that moves those files would break the app's negotiation screen.
 
 ## License
 
 This mod is released under the [MIT License](LICENSE). The license covers this mod's own files only. RLS Career Overhaul and BeamNG.drive are separate works under their own licenses and are not included.
 
 ## Changes
+
+### 0.9.0
+
+This release adds undercover police buyers, makes heat matter on the street as well as at the sale, rebalances the chop shop and closes several loopholes and bugs found in a review of the gameplay flow. Saves from 0.8.x load without any action; see **Upgrading** below.
+
+**Added**
+- **Undercover buyers.** Some underground buyers are undercover police: 2% of offers for a Cold car, 3% for a Warm one and 4% for a Hot one. They pose as any buyer type and are never marked in the app.
+  - Tells: their offer is 5–10% better than usual, and in a negotiation they lose patience at half the normal rate.
+  - Accepting their offer, directly or at the end of a negotiation, springs a sting instead of a sale. Nothing is paid and the listing is removed. The car stays yours, but the police now know its new plate and the colour the buyer saw, so it is a freshly reported, Hot car again. Selling it needs another identity change (the plate comes from a new series: GX, then GY, GZ, GW) and another repaint.
+  - If you are driving when the sting springs, unmarked units start a pursuit at once. If you are on foot, the chase starts the next time you drive any vehicle within 10 minutes; after that the operation loses track of you.
+  - Lose the pursuit: the operation ends, you earn 15 XP and it counts towards Ghost Driver. Get arrested: the stung car is seized and its theft fine is charged, on top of RLS's own arrest fine.
+  - While the operation runs, the garage computer refuses both the identity change and Strip for parts for that car, so it cannot be stripped to escape the sting.
+  - The Underground app shows the sting result, whether units are looking for you or chasing you, and how long the operation has left.
+
+**Changed: heat and police**
+- Heat now affects the police, not only the price. A reported car is spotted by a patrol within about 160 m while Hot, 100 m while Warm and 60 m once Cold. Before, every patrol within 160 m reacted whatever the heat, so a car shown as Cold in the app was exactly as easy to spot.
+- A Cold report halves the chance that a patrol recognizes the original paint under a new plate (30% → 15% at the base rate).
+- When a patrol recognizes the original paint of a car with a new plate, the car is now Hot again, as the notification already said. Before, the new plate kept it at Warm. Hot offers and the buyers' Hot messages can now actually occur in a sale.
+- The heat descriptions in the app explain what each stage means for patrols.
+
+**Changed: economy and progression**
+- Strip for parts now pays by heat: 26% of the car's value when Cold, 23% when Warm and 20% when Hot (was a flat 34%). The flat rate paid as much as or more than an average Underground sale after the identity fee, with no risk, and stripping a car straight away skipped the heat system. Vehicle Theft value perks still raise it by up to 15%.
+- The XP for taking a car, and the Car Thief, Carjacker and Clean Hands milestones, are now counted when the car is stored in your garage. Taking a car and walking away from it no longer earns XP or milestone money. The XP amounts are unchanged.
+- Leaving a test-drive car behind no longer avoids the dealership's investigation: it ends in a fine, as it does after a sale or a chop.
+
+**Changed: selling and workshops**
+- Buyers only meet a parked car. An Underground sale is refused while you are driving the car or while police are chasing it, so a sale can no longer make a car vanish in the middle of a pursuit. The app explains why and disables **Accept**. If a buyer agrees to your price in a negotiation while the handover is blocked, the deal waits until you can take it.
+- Driving a car out of the garage during the identity change now stops the work and refunds the fee, the same rule as Strip for parts. Both jobs are interrupted only when the car actually leaves the garage, not when you just get in.
+
+**Changed: timers**
+- All timers (report delays, heat, workshop and chop jobs, offers, test-drive bans and investigations) now run on play time instead of the computer clock. They keep running while the game is paused or the phone is open, but no longer advance while the game is closed.
+
+**Fixed**
+- A stolen car was never stored automatically while you sat in it, still, inside the garage if you already had another open case. Another case reset the countdown every second. Getting out or pressing the key still worked.
+- Canceling the ignition bypass, or closing its screen, after a miss reset the misses and skipped the 8-second wait, so a miss could be undone for free. A started attempt that is canceled now counts like a failed one: the wait applies and the tripped alarm carries over to the next attempt on that car.
+- Closing the ignition bypass screen some other way than **Cancel** left a flagged-down traffic car stopped in the road with its parking brake on.
+- When RLS could not assign a garage slot while storing a car, the car was seized and the full theft fine was charged. The car now stays in your inventory and the case stays open.
+- A stolen car that left your inventory outside the mod (not through the Underground app, the chop shop or a seizure) was fined without any message. You are now told what happened.
+- The Underground app showed a fixed 20% raid chance and fixed 54/58/61% value rates. It now shows the values with your perks and open cases applied, and also warns about the raid risk on a listed car.
+- The app's step text for an unstored car said to get out of it; it now says to stop inside the garage, and that the theft XP is paid on storage.
+
+**Upgrading from 0.8.x**
+- Remove `rls_vehicle_theft_0.8.1.zip` (or any older version) from your `mods` folder before adding 0.9.0.
+- Existing cases, offers and timers continue where they were; the play-time clock starts from the moment you load the save.
+
+**Testing**
+- The 0.9.0 changes have been checked by reading the code against RLS 2.8.0, not yet played in the game.
 
 ### 0.8.1
 

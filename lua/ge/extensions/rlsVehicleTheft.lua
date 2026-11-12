@@ -17,6 +17,8 @@ local ignitionHalfWidths = {2.1, 1.9, 1.7}
 local ignitionGrace = 0.16
 local ignitionMissPenalty, ignitionFailCooldown = 4, 8
 local ignitionRoute = "rls-theft-ignition"
+-- Misses of an abandoned bypass, per vehicle (not saved): the alarm a miss trips stays tripped on a retry.
+local bypassMisses = {}
 local starter
 local rules = {
   street = {fine = 0.34, minimum = 3000},
@@ -24,6 +26,21 @@ local rules = {
   testDrive = {fine = 0.50, minimum = 5500, reputation = 220},
 }
 local heatHotSeconds, heatWarmSeconds = 120, 240
+-- Share of the car's value the underground pays at each heat stage (before the fenceValue perk).
+local heatMultipliers = {hot = 0.54, warm = 0.58, cold = 0.61}
+-- How close a patrol has to be to spot a reported car at each heat stage, in metres.
+local sightRanges = {hot = 160, warm = 100, cold = 60}
+-- Share of underground buyers who are undercover police, by the car's heat when the offer comes in.
+local undercoverChances = {hot = 0.04, warm = 0.03, cold = 0.02}
+-- How long an undercover operation keeps looking for a seller who has not been chased yet (play time).
+local stingSeconds = 600
+
+-- Play time in seconds. Every saved timer (reports, heat, workshop jobs, offers, bans, investigations) is
+-- measured against it. It runs on real time while the career is loaded, so a paused simulation or an open
+-- phone does not freeze the countdowns, but it stops while the game is closed.
+local function gameTime()
+  return state and state.clock or 0
+end
 
 -- The player's current binding for the take/store action, so messages never name a stale key.
 local function keyLabel()
@@ -67,6 +84,10 @@ local function load()
     state.citations = state.citations or {}
     state.serial = state.serial or 0
     state.cases = state.cases or {}
+    -- Before 0.9 timers were wall-clock (os.time); starting the play-time clock there keeps them valid.
+    state.clock = tonumber(state.clock) or os.time()
+    -- A saved undercover operation survives the reload, but the vehicle it was chasing does not.
+    if state.sting then state.sting.pursuing = nil end
     -- Before 0.8 a profile held a single case in state.case; it becomes the first entry of the list.
     if state.case then
       table.insert(state.cases, state.case)
@@ -78,7 +99,7 @@ local function load()
       if case.phase == "offer" then case.phase, case.offer, case.expiresAt = "ready", nil, nil end
       -- Older cases used one six-minute hot window tied directly to the expected report time.
       -- Preserve that window while splitting it into a hot and warm stage.
-      local reportAt = case.reportAt or os.time()
+      local reportAt = case.reportAt or gameTime()
       case.heatHotUntil = case.heatHotUntil or (reportAt + heatHotSeconds)
       case.heatWarmUntil = case.heatWarmUntil or (reportAt + heatHotSeconds + heatWarmSeconds)
     end
@@ -391,6 +412,55 @@ local function disguised(case)
   return case.identity ~= nil and repainted(case) ~= false
 end
 
+-- Heat cools in two clear stages. It sets what buyers and the chop shop pay and how close a patrol has to
+-- get to spot the car (sightRanges). A new plate helps immediately; a new plate and paint break the link.
+local function heatStatus(case, now)
+  now = now or gameTime()
+  local paintChanged = repainted(case)
+  if case.identity and paintChanged ~= false then
+    return {stage = "cold", label = "Cold", remaining = 0, multiplier = heatMultipliers.cold,
+      detail = "New plate and paint: patrols can no longer match this car to the theft report."}
+  end
+
+  local stage, untilAt, detail
+  if now < (case.heatHotUntil or (case.reportAt or now) + heatHotSeconds) then
+    stage, untilAt = "hot", case.heatHotUntil
+    detail = now < (case.reportAt or 0)
+      and "The theft report is still pending, but buyers already price the car as hot."
+      or "Fresh theft report. Buyers pay less and patrols spot the car from far away."
+  elseif now < (case.heatWarmUntil or (case.reportAt or now) + heatHotSeconds + heatWarmSeconds) then
+    stage, untilAt = "warm", case.heatWarmUntil
+    detail = "Attention is fading: patrols have to get closer to spot the car. Keep it out of sight until it cools for the full value."
+  else
+    stage, untilAt = "cold", nil
+    detail = "The theft report has cooled. Buyers pay the full underground rate and patrols only notice the car up close."
+  end
+
+  -- Changing only the plate makes the car less exposed, but its original paint is still identifiable.
+  -- A patrol that recognizes that paint after the identity change makes the car fully hot again.
+  local recognized = case.recognizedAt and now < case.recognizedAt + heatHotSeconds
+  if case.identity and paintChanged == false and stage == "hot" and not recognized then
+    stage, untilAt = "warm", case.heatWarmUntil
+    detail = "The new plate helps, but the original paint still matches the theft report. Repaint it to break the link."
+  end
+  return {stage = stage, label = stage == "hot" and "Hot" or stage == "warm" and "Warm" or "Cold",
+    remaining = untilAt and math.max(0, untilAt - now) or 0, multiplier = heatMultipliers[stage], detail = detail}
+end
+
+-- A dealership whose test-drive car was taken knows who took it: whatever happens to the car later
+-- (sold, stripped or left behind), its investigation ends with a fine.
+local function openInvestigation(case)
+  if case.source ~= "testDrive" then return false end
+  state.citations[#state.citations + 1] = {due = gameTime() + 150, amount = fineFor(case)}
+  return true
+end
+
+-- True while an undercover operation is after this case's car (state.sting, see "Undercover buyers").
+-- No workshop or chop shop touches such a car until the player has lost the police or the operation ends.
+local function underSting(case)
+  return state and state.sting ~= nil and case ~= nil and state.sting.serial == case.serial
+end
+
 -- RLS speed and red-light cameras bill whoever owns the inventory record. While the stolen car still wears
 -- its original plate, the registered keeper is the previous owner, so the camera fine is not charged to the thief.
 local cameraFineLabels = {
@@ -457,7 +527,7 @@ local function bindRls()
   bind(overhaul_career_market_testDrive, "start", function(original)
     return function(...)
       local _, seller = inspectedDealer()
-      if seller and load() and (state.bans[seller] or 0) > os.time() then
+      if seller and load() and (state.bans[seller] or 0) > gameTime() then
         notify("This dealership has suspended your test-drive privileges.")
         return false
       end
@@ -625,18 +695,21 @@ local function streetReportDelay(vehicle, result)
   return delay
 end
 
-local function begin(vehicle, source, seller, value, delay, organizationId, immediate)
+-- reward: the XP and theft counters this theft earns ({xp, label, clean, carjacked}). They are paid when the
+-- car is stored, so a car that is ditched or seized before storage earns nothing.
+local function begin(vehicle, source, seller, value, delay, organizationId, immediate, reward)
   liveId = vehicle:getID()
   state.serial = state.serial + 1
   -- Every case you are already holding makes the report come in sooner.
   delay = delay / (1 + 0.35 * #state.cases)
-  local reportAt = os.time() + math.max(1, math.ceil(delay))
+  local reportAt = gameTime() + math.max(1, math.ceil(delay))
   table.insert(state.cases, {serial = state.serial, source = source, seller = seller, value = tonumber(value) or 0,
     reportAt = reportAt, heatHotUntil = reportAt + heatHotSeconds,
-    heatWarmUntil = reportAt + heatHotSeconds + heatWarmSeconds, phase = "transit", immediate = immediate or nil})
+    heatWarmUntil = reportAt + heatHotSeconds + heatWarmSeconds, phase = "transit", immediate = immediate or nil,
+    reward = reward})
   patrolCheck = 0
   if source == "testDrive" then
-    state.bans[seller] = os.time() + 1800
+    state.bans[seller] = gameTime() + 1800
   end
   local reputation = rules[source].reputation
   local organization = reputation and organizationId and overhaul_world_organizations
@@ -650,9 +723,9 @@ local function begin(vehicle, source, seller, value, delay, organizationId, imme
   end
   save()
   if immediate then
-    notify("The driver saw you take the vehicle. Police are responding. Lose them and store it at a garage you own.")
+    notify("The driver saw you take the vehicle. Police are responding. Lose them and store it at a garage you own to earn the XP.")
   else
-    notify("Vehicle taken. Drive to a garage you own and press " .. keyLabel() .. " to store it.")
+    notify("Vehicle taken. Drive to a garage you own and press " .. keyLabel() .. " to store it and earn the XP.")
   end
 end
 
@@ -731,18 +804,29 @@ local function store(vehicle, auto)
     if ok and baseColor(paint) then record.config.paints = {paint} end
   end
   case.paint = recordColor(id)
-  if not inventory().moveVehicleToGarage(id, garage.id) then
-    seize("Garage intake failed.", case)
-    return
-  end
+  -- RLS keeps a vehicle it could not place (career/garage/inventory.lua moveVehicleToGarage) in the inventory
+  -- without a garage. That is a game-side problem, not a police matter: the case stays open and the car is yours.
+  local placed = inventory().moveVehicleToGarage(id, garage.id)
   inventory().setVehicleDirty(id)
   case.value = math.max(case.value, tonumber(overhaul_career_market_valueCalculator.getInventoryVehicleSellValue(id)) or 0)
   -- From here the case follows the inventory id; a stale object id could match an unrelated vehicle later.
   liveId = nil
   lastStoreRefusal = nil
+  parkedTicks = 0
+  local reward = case.reward
+  case.reward = nil
+  if reward then
+    count("stolen")
+    if reward.clean then count("cleanBypass") end
+    if reward.carjacked then count("carjacked") end
+  end
   save()
-  notify("Vehicle stored. At the garage computer, change its identity and repaint it; the original paint is in the theft report.")
-  grantXp(10, "Stolen vehicle stored")
+  if placed then
+    notify("Vehicle stored. At the garage computer, change its identity and repaint it; the original paint is in the theft report.")
+  else
+    notify("The vehicle is in your inventory, but RLS could not assign it a garage slot. Free a slot and move it into a garage.")
+  end
+  grantXp(10 + (reward and tonumber(reward.xp) or 0), reward and (reward.label .. ", vehicle stored") or "Stolen vehicle stored")
   return true
 end
 
@@ -764,6 +848,7 @@ end
 
 local function finishIgnition(challenge, vehicle, startMotor)
   ignition = nil
+  bypassMisses[challenge.id] = nil
   -- skipped: the engine was already running (a driver was present), so no bypass was needed.
   -- complete() returns false to abort, or the vehicle actually taken when it replaced a prop.
   local taken = challenge.complete(vehicle, {skipped = not startMotor, misses = challenge.misses or 0})
@@ -836,8 +921,23 @@ end
 local function failIgnition(challenge, message)
   closeIgnition(challenge)
   releaseForcedStop(challenge.id)
-  ignitionCooldown = os.time() + ignitionFailCooldown
+  if challenge.stage then bypassMisses[challenge.id] = challenge.misses or 0 end
+  ignitionCooldown = gameTime() + ignitionFailCooldown
   notify(message)
+end
+
+-- Ends a bypass the player walked away from (Cancel, or the screen closed some other way). Once the attempt
+-- has started this counts like a failure: the misses carry over to the next attempt on this car and the retry
+-- waits out the cooldown, so canceling after a miss cannot wipe the alarm. leaving: the screen is already
+-- closing, so do not navigate.
+local function abortIgnition(challenge, message, leaving)
+  if leaving then ignition = nil else closeIgnition(challenge) end
+  releaseForcedStop(challenge.id)
+  if challenge.started then
+    bypassMisses[challenge.id] = challenge.misses or 0
+    ignitionCooldown = gameTime() + ignitionFailCooldown
+  end
+  if message then notify(message) end
 end
 
 local function ignitionSignalAt(challenge, time)
@@ -892,6 +992,8 @@ function M.onIgnitionSample(token, running)
   challenge.missPenalty = perk("missPenalty", ignitionMissPenalty)
   challenge.target = math.random(4, 12)
   challenge.frame, challenge.idle = 0, 0
+  challenge.misses = bypassMisses[challenge.id] or 0
+  if challenge.misses > 0 then notify("The alarm on this car is still tripped from your last attempt.") end
   if extensions.ui_router.navigate(ignitionRoute) == false then
     ignition = nil
     notify("Could not open the ignition bypass screen.")
@@ -902,13 +1004,13 @@ function M.ignitionInput(token, action)
   local challenge = ignition
   if not challenge or challenge.token ~= token or not challenge.stage then return end
   if action == "leave" then
-    ignition = nil
+    abortIgnition(challenge, challenge.started and "Ignition bypass abandoned." or nil, true)
     return
   end
   if action == "cancel" then
-    closeIgnition(challenge)
-    releaseForcedStop(challenge.id)
-    notify("Ignition bypass canceled.")
+    abortIgnition(challenge, challenge.started
+      and string.format("Ignition bypass canceled. Wait %d seconds before trying again.", ignitionFailCooldown)
+      or "Ignition bypass canceled.")
     return
   end
   local vehicle = canContinueIgnition(challenge)
@@ -956,10 +1058,7 @@ local function updateIgnition(dt)
   end
   if not challenge.started then
     challenge.idle = challenge.idle + dt
-    if challenge.idle > 45 then
-      closeIgnition(challenge)
-      releaseForcedStop(challenge.id)
-    end
+    if challenge.idle > 45 then abortIgnition(challenge, "Ignition bypass closed.") end
     return
   end
   challenge.remaining = challenge.remaining - dt
@@ -997,7 +1096,7 @@ function M.attempt()
     return
   end
   if attempted or ignition then return end
-  if os.time() < ignitionCooldown then
+  if gameTime() < ignitionCooldown then
     notify("Wait a few seconds before trying again.")
     return
   end
@@ -1020,10 +1119,9 @@ function M.attempt()
       if be:getPlayerVehicleID(0) ~= info.vehId then gameplay_walk.getInVehicle(vehicle) end
       core_vehicleBridge.executeAction(vehicle, "setFreeze", false)
       listing.markedSold, listing.soldViewCounter = true, 1
-      begin(vehicle, activeDrive and "testDrive" or "inspection", seller, info.value, delay, dealer.associatedOrganization)
-      count("stolen")
-      if result and not result.skipped and result.misses == 0 then count("cleanBypass") end
-      grantXp(activeDrive and 20 or 15, "Dealership vehicle theft")
+      begin(vehicle, activeDrive and "testDrive" or "inspection", seller, info.value, delay, dealer.associatedOrganization,
+        nil, {xp = activeDrive and 20 or 15, label = "Dealership vehicle theft",
+          clean = result and not result.skipped and result.misses == 0 or nil})
     end)
     return
   end
@@ -1087,15 +1185,10 @@ local function updateAttempt(dt)
     local id = vehicle:getID()
     gameplay_walk.getInVehicle(vehicle)
     if not gameplay_traffic.getTrafficData()[id] then gameplay_traffic.insertTraffic(id, true, true) end
-    begin(vehicle, "street", nil, 0, delay, nil, result.skipped)
-    count("stolen")
-    if result.skipped then
-      if fromTraffic then count("carjacked") end
-      grantXp(12, "Vehicle theft")
-    else
-      if result.misses == 0 then count("cleanBypass") end
-      grantXp(result.misses == 0 and 20 or 15, "Vehicle theft")
-    end
+    local clean = not result.skipped and result.misses == 0
+    begin(vehicle, "street", nil, 0, delay, nil, result.skipped, {
+      xp = result.skipped and 12 or clean and 20 or 15, label = "Vehicle theft",
+      clean = clean or nil, carjacked = (result.skipped and fromTraffic) or nil})
     return vehicle
   end)
 end
@@ -1110,29 +1203,32 @@ local function identityFee(value)
 end
 
 local function startIdentity(case)
-  if case.phase ~= "stored" or case.seizure then return end
+  if case.phase ~= "stored" or case.seizure or underSting(case) then return end
   local value = currentValue(case)
   local fee = identityFee(value)
   if not charge(fee, "Vehicle identity change", "service", false) then notify("Insufficient funds.") return end
   case.value = math.max(case.value, value)
   local seconds = perk("identityTime", 150)
-  case.phase, case.readyAt = "workshop", os.time() + seconds
+  -- The fee is refunded if the car is driven out of the garage before the work is done.
+  case.phase, case.readyAt, case.identityFee = "workshop", gameTime() + seconds, fee
   save()
   notify(string.format("Identity change started. Cost: %s. Ready in %d seconds.", money(fee), seconds))
 end
 
 -- Chop shop: a stored car can be stripped for parts instead of disguised. It takes less time and no
--- identity change or repaint, and nothing is handed to a buyer, so there is no raid. It pays less.
+-- identity change or repaint, and nothing is handed to a buyer, so there is no raid. It pays less than an
+-- average underground sale after the identity fee (about 31% of the value when cold), and a car with a
+-- fresh report pays less again, so stripping it at once does not dodge the heat.
 local chopSeconds = 90
-local chopRate = 0.34
+local chopRates = {hot = 0.20, warm = 0.23, cold = 0.26}
 
 local function chopValue(case)
-  return math.floor(currentValue(case) * chopRate * perk("fenceValue", 1))
+  return math.floor(currentValue(case) * chopRates[heatStatus(case).stage] * perk("fenceValue", 1))
 end
 
 local function startChop(case)
-  if case.phase ~= "stored" or case.seizure then return end
-  case.phase, case.readyAt = "chopping", os.time() + chopSeconds
+  if case.phase ~= "stored" or case.seizure or underSting(case) then return end
+  case.phase, case.readyAt = "chopping", gameTime() + chopSeconds
   save()
   notify(string.format("The car is being stripped for parts. The chop shop pays about %s in %d seconds.",
     money(chopValue(case)), chopSeconds))
@@ -1142,9 +1238,7 @@ local function finishChop(case)
   local price = chopValue(case)
   exitVehicle(inventory().getVehicleIdFromInventoryId(case.inventoryId))
   if inventory().removeVehicle(case.inventoryId) == false then return end
-  if case.source == "testDrive" then
-    state.citations[#state.citations + 1] = {due = os.time() + 150, amount = fineFor(case)}
-  end
+  openInvestigation(case)
   removeCase(case)
   overhaul_career_economy_payment.reward({money = {amount = price}},
     {label = "Chop shop parts sale", category = "sale", tags = {"vehicleTheft"}}, true)
@@ -1156,7 +1250,8 @@ local function finishChop(case)
 end
 
 -- Abandoning: walk away from a stolen car you have not stored. Beyond this distance, with no pursuit on
--- you, the car is left behind: no theft fine, but also no payout.
+-- you, the car is left behind: no theft fine, but also no payout and no XP (that is paid on storage).
+-- A test-drive car is the exception: the dealership knows who took it and still opens an investigation.
 local abandonDistance = 120
 
 local function checkAbandon(case)
@@ -1166,12 +1261,17 @@ local function checkAbandon(case)
   if not vehicle or not player or distance(vehicle, player) < abandonDistance then return false end
   local pursuit = overhaul_integration_services_police.getPursuitData(liveId)
   if pursuit and (pursuit.mode or 0) ~= 0 then return false end
-  local reported = case.reported or os.time() >= (case.reportAt or 0)
+  local reported = case.reported or gameTime() >= (case.reportAt or 0)
   vehicle:delete()
+  local investigated = openInvestigation(case)
   removeCase(case)
   save()
-  notify(reported and "You left the stolen car behind. Police will tow it; there is no fine."
-    or "You left the stolen car behind. Nobody has noticed it yet; there is no fine.")
+  if investigated then
+    notify("You left the stolen car behind. The dealership knows who took it and has opened an investigation.")
+  else
+    notify(reported and "You left the stolen car behind. Police will tow it; there is no fine."
+      or "You left the stolen car behind. Nobody has noticed it yet; there is no fine.")
+  end
   return true
 end
 
@@ -1216,38 +1316,6 @@ local buyerNames = {"Sly", "Dutch", "Moth", "Kestrel", "Rook", "Nico", "Viper", 
 
 local function roundPrice(value)
   return math.max(50, math.floor((tonumber(value) or 0) / 50 + 0.5) * 50)
-end
-
--- Heat cools in two clear stages. A new plate helps immediately; a new plate and paint break the link.
-local function heatStatus(case, now)
-  now = now or os.time()
-  local paintChanged = repainted(case)
-  if case.identity and paintChanged ~= false then
-    return {stage = "cold", label = "Cold", remaining = 0, multiplier = 0.61,
-      detail = "New plate and paint: patrols can no longer match this car to the theft report."}
-  end
-
-  local stage, untilAt, multiplier, detail
-  if now < (case.heatHotUntil or (case.reportAt or now) + heatHotSeconds) then
-    stage, untilAt, multiplier = "hot", case.heatHotUntil, 0.54
-    detail = now < (case.reportAt or 0)
-      and "The theft report is still pending, but buyers already price the car as hot."
-      or "Fresh theft report. Buyers pay less and patrols are actively looking for the car."
-  elseif now < (case.heatWarmUntil or (case.reportAt or now) + heatHotSeconds + heatWarmSeconds) then
-    stage, untilAt, multiplier = "warm", case.heatWarmUntil, 0.58
-    detail = "Attention is fading. Keep the car out of sight until it cools for the full value."
-  else
-    stage, untilAt, multiplier = "cold", nil, 0.61
-    detail = "The theft report has cooled. Buyers pay the full underground rate."
-  end
-
-  -- Changing only the plate makes the car less exposed, but its original paint is still identifiable.
-  if case.identity and paintChanged == false and stage == "hot" then
-    stage, untilAt, multiplier = "warm", case.heatWarmUntil, 0.58
-    detail = "The new plate helps, but the original paint still matches the theft report. Repaint it to break the link."
-  end
-  return {stage = stage, label = stage == "hot" and "Hot" or stage == "warm" and "Warm" or "Cold",
-    remaining = untilAt and math.max(0, untilAt - now) or 0, multiplier = multiplier, detail = detail}
 end
 
 -- What the underground pays; fresh reports draw the deepest discount.
@@ -1307,6 +1375,10 @@ local function generateOffer(case, now)
   elseif ratio > 1.1 then
     value = math.min(value, base * (0.95 + math.random() * 0.1))
   end
+  -- An undercover cop poses as an ordinary buyer of any type. The only tell is the money: the police want
+  -- the deal to happen, so the offer is a little too good, and they are patient in a negotiation.
+  local undercover = math.random() < (undercoverChances[heat.stage] or 0)
+  if undercover then value = value * (1.05 + math.random() * 0.05) end
   local offer = {
     id = newOfferId(listing),
     buyer = buyerNames[math.random(1, #buyerNames)],
@@ -1317,6 +1389,7 @@ local function generateOffer(case, now)
     quote = heat.stage == "hot" and archetype.hotQuote
       or heat.stage == "warm" and archetype.warmQuote
       or archetype.quotes[math.random(1, #archetype.quotes)],
+    undercover = undercover or nil, -- never sent to the app (getUndergroundState copies named fields only)
   }
   table.insert(listing.offers, offer)
   notifyPhone("New underground offer", string.format("%s offers %s for your vehicle.", offer.buyer, money(offer.value)))
@@ -1336,10 +1409,78 @@ local function removeOffer(case, offerId)
   if index then table.remove(case.listing.offers, index) end
 end
 
--- Hands the car over at the agreed price. Returns "sold", "raided" or nil when it cannot happen now.
-local function completeUndergroundSale(case, price, negotiated)
+-- Buyers only meet a parked car: never one the player is driving, and never one the police are chasing
+-- (handing it over would make it vanish mid-pursuit). Returns the reason, or nil when the handover can happen.
+local function handoverBlocked(case)
+  local vehId = case and caseVehicleId(case)
+  if not vehId then return end
+  if be:getPlayerVehicleID(0) == vehId then return "Park the car and get out before the handover." end
+  local police = overhaul_integration_services_police
+  local pursuit = police and police.getPursuitData(vehId)
+  if pursuit and (pursuit.mode or 0) ~= 0 then return "No buyer will meet a car the police are chasing." end
+end
+
+-- Undercover buyers ---------------------------------------------------------------------------------
+-- Accepting an undercover cop's offer is a sting, not a sale. The listing is gone and the car stays yours,
+-- but the police now know its new plate and the colour the buyer saw, so it is back to an undisguised,
+-- freshly reported car: it needs another identity change and another repaint. state.sting then hunts the
+-- seller: the next vehicle the player drives (at once if they are driving) gets an immediate pursuit, like a
+-- carjacking report. Lose it and the operation ends; get arrested and the car is seized with the theft fine.
+
+-- Starts the sting pursuit on the vehicle the player is driving. Returns true once a chase is on.
+local function startStingPursuit()
+  local sting = state.sting
+  if not sting or sting.pursuing then return false end
+  local vehId = be:getPlayerVehicleID(0)
+  if not vehId or vehId < 0 or not getObjectByID(vehId) or (gameplay_walk and gameplay_walk.isWalking()) then
+    return false
+  end
+  local police = overhaul_integration_services_police
+  if not police then return false end
+  local pursuit = police.getPursuitData(vehId)
+  if not pursuit or (pursuit.mode or 0) == 0 then
+    -- Mode -1 is an arrest in progress, any other non-zero mode an ongoing chase: either one already counts.
+    local responderId = police.getNearestPoliceVehicle(vehId, false, true)
+    police.setPursuitMode(1, vehId, responderId and {responderId} or nil)
+  end
+  sting.pursuing = vehId
+  save()
+  notify("Unmarked units are on you. Lose them, or the stolen car is seized and the theft fine charged.")
+  return true
+end
+
+local function springSting(case)
+  local now = gameTime()
+  case.phase, case.listing = "stored", nil
+  case.identity = nil
+  -- The next identity change issues a plate from a new series; the burned one is known.
+  case.identityRevision = (case.identityRevision or 0) + 1
+  -- The theft report now describes the car as the buyer saw it.
+  case.paint = recordColor(case.inventoryId) or case.paint
+  case.heatHotUntil, case.heatWarmUntil = now + heatHotSeconds, now + heatHotSeconds + heatWarmSeconds
+  case.reportAt = math.min(case.reportAt or now, now)
+  case.reported, case.recognizedAt, case.sightedPatrol = true, nil, nil
+  state.sting = {serial = case.serial, untilAt = now + stingSeconds}
+  lastResult = {kind = "sting"}
+  save()
+  notify("The buyer was an undercover cop. The deal is off and the car's new plate is burned.")
+  if not startStingPursuit() then
+    notify("Undercover units are looking for you. The next time you drive, expect a chase.")
+  end
+  return "sting"
+end
+
+-- Hands the car over at the agreed price. Returns "sold", "raided", "sting" or nil when it cannot happen now.
+-- undercover: the buyer was an undercover cop, so the handover springs the sting instead.
+local function completeUndergroundSale(case, price, negotiated, undercover)
   price = math.floor(tonumber(price) or 0)
   if price <= 0 or not vehicleCase(case.inventoryId) or case.seizure then return end
+  local blocked = handoverBlocked(case)
+  if blocked then
+    notify(blocked)
+    return
+  end
+  if undercover then return springSting(case) end
   if repainted(case) == false and math.random() < paintStingChance() then
     seize("The buyer's contact matched the paint to the theft report and police raided the handover.", case)
     lastResult = {kind = "raided"}
@@ -1350,9 +1491,7 @@ local function completeUndergroundSale(case, price, negotiated)
     notify("The vehicle cannot be handed over right now.")
     return
   end
-  if case.source == "testDrive" then
-    state.citations[#state.citations + 1] = {due = os.time() + 150, amount = fineFor(case)}
-  end
+  openInvestigation(case)
   removeCase(case)
   overhaul_career_economy_payment.reward({money = {amount = price}},
     {label = "Underground vehicle sale", category = "sale", tags = {"vehicleTheft"}}, true)
@@ -1399,8 +1538,17 @@ function M.getUndergroundState()
   local view = {available = true, result = lastResult, negotiation = negotiationView(), offers = {}}
   view.skill = skillProgress()
   view.limit = caseLimit()
+  -- The rates and risks the app explains, with the player's perks and open cases applied.
+  local fence = perk("fenceValue", 1)
+  view.rates = {}
+  for stage, multiplier in pairs(heatMultipliers) do view.rates[stage] = math.floor(multiplier * fence * 100 + 0.5) end
+  view.raidChance = math.floor(paintStingChance() * 100 + 0.5)
   view.cases = {}
-  local now = os.time()
+  local now = gameTime()
+  if state.sting then
+    view.sting = {serial = state.sting.serial, chasing = state.sting.pursuing ~= nil,
+      remaining = math.max(0, state.sting.untilAt - now)}
+  end
   local case = selectedCase()
   for _, other in ipairs(state.cases) do
     local record = other.inventoryId and inventory().getVehicles()[other.inventoryId]
@@ -1422,6 +1570,7 @@ function M.getUndergroundState()
     local base, heat = undergroundValue(case, now)
     vehicle.marketValue, vehicle.heat, vehicle.suggestedPrice = base, heat, roundPrice(base)
     vehicle.hot = heat.stage == "hot"
+    vehicle.handoverBlocked = handoverBlocked(case)
   end
   if case.listing then
     vehicle.listedPrice = case.listing.price
@@ -1457,7 +1606,7 @@ function M.undergroundList(price)
   local case = selectedCase()
   if not case or case.phase ~= "ready" or not vehicleCase(case.inventoryId) or case.seizure then return end
   price = roundPrice(price)
-  local now = os.time()
+  local now = gameTime()
   case.phase = "listed"
   case.listing = {price = price, listedAt = now, offers = {}, nextOfferAt = now + math.random(10, 25)}
   lastResult = nil
@@ -1479,7 +1628,7 @@ function M.undergroundSetPrice(price)
   local case = sellableCase()
   if not case then return end
   case.listing.price = roundPrice(price)
-  scheduleNextOffer(case.listing, undergroundValue(case), os.time())
+  scheduleNextOffer(case.listing, undergroundValue(case), gameTime())
   save()
   publishUnderground()
 end
@@ -1488,9 +1637,9 @@ function M.undergroundAccept(offerId)
   if not load() then return end
   local case = sellableCase()
   local offer = findOffer(case, tonumber(offerId))
-  if not offer or offer.expiresAt <= os.time() then return end
+  if not offer or offer.expiresAt <= gameTime() then return end
   negotiation = nil
-  completeUndergroundSale(case, offer.value)
+  completeUndergroundSale(case, offer.value, false, offer.undercover)
   publishUnderground()
 end
 
@@ -1533,7 +1682,7 @@ function M.undergroundNegotiate(offerId)
   if not load() then return end
   local case = sellableCase()
   local offer = findOffer(case, tonumber(offerId))
-  if not offer or offer.expiresAt <= os.time() then return end
+  if not offer or offer.expiresAt <= gameTime() then return end
   local base = undergroundValue(case)
   local archetype = buyerArchetypes[offer.archetype] or buyerArchetypes.fixer
   local asking = math.max(case.listing.price, offer.value)
@@ -1541,7 +1690,7 @@ function M.undergroundNegotiate(offerId)
     serial = case.serial, offerId = offer.id, opponentName = offer.buyer .. " (" .. (archetype.label or "Buyer") .. ")",
     quote = offer.quote, archetype = archetype, patience = 1, token = (negotiation and negotiation.token or 0) + 1,
     theirOffer = offer.value, myOffer = asking, startingPrice = asking, marketValue = base,
-    maxBuyerPrice = math.max(base * 1.12, offer.value * 1.2), status = "initial",
+    maxBuyerPrice = math.max(base * 1.12, offer.value * 1.2), status = "initial", undercover = offer.undercover,
     history = {{myOffer = asking, negotiationStatus = "initial"}, {theirOffer = offer.value, negotiationStatus = "initial"}},
   }
   publishUnderground()
@@ -1550,7 +1699,7 @@ end
 local function settleNegotiationSale(n, price)
   local case = findCase(n.serial)
   local opening = n.history[2] and n.history[2].theirOffer or price
-  local outcome = case and completeUndergroundSale(case, price, price > opening)
+  local outcome = case and completeUndergroundSale(case, price, price > opening, n.undercover)
   n.result = outcome and {kind = outcome, price = price} or {kind = "failed"}
 end
 
@@ -1571,14 +1720,21 @@ function M.undergroundCounter(price)
     publishUnderground()
     job.sleep(thinking)
     if negotiation ~= n or n.token ~= token then return end
-    n.patience = math.max(0, n.patience - sellingPatienceDrop(n.myOffer, n.marketValue, n.archetype))
+    -- An undercover cop wants the deal to close, so they lose patience at half the usual rate.
+    local drop = sellingPatienceDrop(n.myOffer, n.marketValue, n.archetype) * (n.undercover and 0.5 or 1)
+    n.patience = math.max(0, n.patience - drop)
     if n.patience <= 0 then
       n.status = "failed"
       local case = findCase(n.serial)
       if case then removeOffer(case, n.offerId); save() end
     else
       local counter = buyerCounter(n.myOffer, n.theirOffer, n.maxBuyerPrice)
-      if counter >= n.myOffer then
+      local blocked = counter >= n.myOffer and handoverBlocked(findCase(n.serial))
+      if blocked then
+        -- The buyer agrees to the price but will not meet yet: the deal stands until the player takes it.
+        n.theirOffer, n.status = math.min(n.myOffer, n.maxBuyerPrice), "counterOffer"
+        notify("The buyer agrees to " .. money(n.theirOffer) .. ". " .. blocked)
+      elseif counter >= n.myOffer then
         n.theirOffer, n.status = math.min(n.myOffer, n.maxBuyerPrice), "accepted"
       else
         n.theirOffer = counter
@@ -1594,6 +1750,11 @@ end
 function M.undergroundTakeOffer()
   local n = negotiation
   if not n or n.result or n.status == "failed" or n.status == "thinking" or n.status == "typing" then return end
+  local blocked = handoverBlocked(findCase(n.serial))
+  if blocked then
+    notify(blocked)
+    return
+  end
   n.status = "accepted"
   table.insert(n.history, {myOffer = n.theirOffer, negotiationStatus = "accepted"})
   settleNegotiationSale(n, n.theirOffer)
@@ -1633,7 +1794,9 @@ local function addComputerRow(case, buttons)
   local function info(label)
     row.rlsTheft = {id = "rlsTheft", label = label, order = 80, disabled = true, callback = function() end}
   end
-  if case.phase == "stored" then
+  if underSting(case) then
+    info("Police are after this car: no crew will touch it until you lose them")
+  elseif case.phase == "stored" then
     row.rlsTheft = {id = "rlsTheft", order = 80,
       label = "Change vehicle identity (" .. money(identityFee(currentValue(case))) .. ")",
       callback = function()
@@ -1666,6 +1829,15 @@ function M.onOverhaulComputerAddFunctions(menu, buttons)
   for _, case in ipairs(state.cases) do addComputerRow(case, buttons) end
 end
 
+-- True while the player drives the case's car outside an owned garage. Only getting in does not count.
+local function drivenOutOfGarage(case)
+  local vehId = caseVehicleId(case)
+  if not vehId or be:getPlayerVehicleID(0) ~= vehId then return false end
+  local vehicle = getObjectByID(vehId)
+  local garage = vehicle and ownedGarageNear(vehicle)
+  return vehicle ~= nil and not (garage and insideGarage(vehicle, garage))
+end
+
 local function updateCase(case, now)
   if case.seizure then
     if not case.inventoryId or not vehicleCase(case.inventoryId)
@@ -1675,9 +1847,12 @@ local function updateCase(case, now)
     return
   end
   if case.inventoryId and not vehicleCase(case.inventoryId) then
-    charge(fineFor(case), "Missing stolen vehicle", "fine", true)
+    -- The inventory record went away outside the mod's guarded sale paths: the car is gone, the theft stands.
+    local amount = fineFor(case)
+    charge(amount, "Missing stolen vehicle", "fine", true)
     removeCase(case)
     save()
+    notify("A stolen vehicle left your garage outside the underground. The theft is on record. Fine: " .. money(amount))
     return
   end
   if case.phase == "transit" and not liveId then
@@ -1689,19 +1864,33 @@ local function updateCase(case, now)
   end
   if case.phase == "chopping" then
     -- Driving the car out of the garage interrupts the crew: no payment, the car is yours again.
-    if caseVehicleId(case) == be:getPlayerVehicleID(0) then
+    if drivenOutOfGarage(case) then
       case.phase, case.readyAt = "stored", nil
       save()
-      notify("You took the car away before the crew finished. Nothing was paid.")
+      notify("You drove the car out before the crew finished. Nothing was paid.")
     elseif now >= case.readyAt then
       finishChop(case)
     end
     return
   end
   if checkAbandon(case) then return end
-  if case.phase == "workshop" and now >= case.readyAt then
+  if case.phase == "workshop" and drivenOutOfGarage(case) then
+    -- Same rule as the chop shop: the work stops when the car leaves. The workshop returns the fee.
+    local refund = tonumber(case.identityFee) or 0
+    case.phase, case.readyAt, case.identityFee = "stored", nil, nil
+    if refund > 0 then
+      overhaul_career_economy_payment.reward({money = {amount = refund}},
+        {label = "Vehicle identity change refund", category = "service", tags = {"vehicleTheft"}}, true)
+    end
+    save()
+    notify("You drove the car out before the new identity was finished. The workshop refunded " .. money(refund) .. ".")
+    return
+  elseif case.phase == "workshop" and now >= case.readyAt then
+    case.identityFee = nil
     local id = case.inventoryId
-    case.identity = string.format("GX%06d", case.serial % 1000000)
+    -- A plate burned in an undercover sting is known to the police: each new identity uses the next series.
+    local series = {"GX", "GY", "GZ", "GW"}
+    case.identity = string.format("%s%06d", series[(case.identityRevision or 0) % #series + 1], case.serial % 1000000)
     local record = inventory().getVehicles()[id]
     if record.config then record.config.licenseName = case.identity end
     local vehicleId = inventory().getVehicleIdFromInventoryId(id)
@@ -1721,27 +1910,27 @@ local function updateCase(case, now)
 
   -- Storing used to depend on a key press the player only heard about once. Remind them near an owned
   -- garage, and store automatically when they park inside it and get out.
-  local stolen = case.phase == "transit" and liveId and getObjectByID(liveId)
-  if stolen and ownedGarageNear(stolen) then
-    if be:getPlayerVehicleID(0) == liveId then
-      -- A car that is only parked, never stored, is not in the inventory: saving and reloading would lose it.
-      -- Once it sits still inside the garage, store it without waiting for a key press or for the player to get out.
-      if stolen:getVelocity():length() <= 1 then
-        parkedTicks = parkedTicks + 1
-        if parkedTicks >= 3 and store(stolen, true) then
+  -- parkedTicks belongs to the transit case alone: other open cases must not reset it.
+  if case.phase == "transit" then
+    local stolen = liveId and getObjectByID(liveId)
+    if stolen and ownedGarageNear(stolen) then
+      if be:getPlayerVehicleID(0) == liveId then
+        -- A car that is only parked, never stored, is not in the inventory: saving and reloading would lose it.
+        -- Once it sits still inside the garage, store it without waiting for a key press or for the player to get out.
+        if stolen:getVelocity():length() <= 1 then
+          parkedTicks = parkedTicks + 1
+          if parkedTicks >= 3 and store(stolen, true) then return end
+        else
           parkedTicks = 0
-          return
         end
-      else
-        parkedTicks = 0
+        ui_message("Stolen vehicle: stop inside the garage and it will be stored (or press " .. keyLabel() .. ").",
+          2, "rlsVehicleTheftStore")
+      elseif gameplay_walk.isWalking() and store(stolen, true) then
+        return
       end
-      ui_message("Stolen vehicle: park inside the garage and it will be stored (or press " .. keyLabel() .. ").",
-        2, "rlsVehicleTheftStore")
-    elseif gameplay_walk.isWalking() and store(stolen, true) then
-      return
+    else
+      parkedTicks = 0
     end
-  else
-    parkedTicks = 0
   end
 
   -- After the identity change only an unrepainted car can still be matched to the theft report.
@@ -1770,9 +1959,12 @@ local function updateCase(case, now)
     save()
     return
   end
+  -- Heat decides how close a patrol has to be to spot the car; a cooled report also halves the chance
+  -- that a patrol recognizes the original paint under a new plate.
+  local stage = heatStatus(case, now).stage
   local patrolId = police.getNearestPoliceVehicle(id, true, true)
   local patrol = patrolId and getObjectByID(patrolId)
-  if patrol and distance(patrol, vehicle) <= 160 then
+  if patrol and distance(patrol, vehicle) <= sightRanges[stage] then
     if not case.identity then
       case.heatHotUntil, case.heatWarmUntil = now + heatHotSeconds, now + heatHotSeconds + heatWarmSeconds
       notify("A patrol spotted the stolen car. It's hot again; keep it out of sight to cool it down.")
@@ -1781,8 +1973,9 @@ local function updateCase(case, now)
     elseif case.sightedPatrol ~= patrolId then
       -- New plate, reported paint: each patrol gets one look at the car.
       case.sightedPatrol = patrolId
-      if math.random() < paintRecognitionChance() then
+      if math.random() < paintRecognitionChance() * (stage == "cold" and 0.5 or 1) then
         case.heatHotUntil, case.heatWarmUntil = now + heatHotSeconds, now + heatHotSeconds + heatWarmSeconds
+        case.recognizedAt = now
         notify("A patrol recognized the stolen vehicle by its original paint. It's hot again; repaint it to break the link.")
         police.setPursuitMode(1, id, {patrolId})
       end
@@ -1791,16 +1984,49 @@ local function updateCase(case, now)
   end
 end
 
+-- Runs the undercover operation every second: chase the next vehicle the player drives, and end the
+-- operation when the stung car is gone, when a chase fades out without an evade or arrest event, or when
+-- nobody was chased before its time ran out.
+local function updateSting(now)
+  local sting = state.sting
+  if not sting then return end
+  local function finish(message)
+    state.sting = nil
+    save()
+    if message then notify(message) end
+  end
+  if not findCase(sting.serial) then return finish() end
+  if sting.pursuing then
+    local police = overhaul_integration_services_police
+    local pursuit = police and police.getPursuitData(sting.pursuing)
+    if pursuit and (pursuit.mode or 0) ~= 0 then
+      sting.quietSince = nil
+    else
+      -- Evade and arrest arrive through onPursuitAction; a chase that just stops is a lost trail.
+      sting.quietSince = sting.quietSince or now
+      if now - sting.quietSince >= 5 then
+        finish("The undercover units lost your trail. The car is yours, but it needs a new identity and a new colour.")
+      end
+    end
+    return
+  end
+  if now >= sting.untilAt then
+    return finish("The undercover operation lost track of you. Crews will work on the car again.")
+  end
+  startStingPursuit()
+end
+
 function M.onUpdate(dtReal, dt)
   if not load() then
     ignition = nil
     return
   end
+  state.clock = state.clock + (tonumber(dtReal) or 0)
   if ignition then updateIgnition(dtReal) end
   updateStarter(dtReal)
   if attempted then updateAttempt(dt) end
-  -- The app's countdowns (identity change, next offer, offer expiry) are real-time, so refresh the open
-  -- app on real time too: a paused or slowed simulation must not freeze them.
+  -- The app's countdowns (identity change, next offer, offer expiry) run on the play-time clock, which
+  -- follows real time, so refresh the open app on real time too: a paused simulation must not freeze them.
   appTick = appTick - dtReal
   if appOpen and appTick <= 0 then
     appTick = 1
@@ -1810,7 +2036,7 @@ function M.onUpdate(dtReal, dt)
   if patrolCheck > 0 then return end
   patrolCheck = 1
   bindRls()
-  local now = os.time()
+  local now = gameTime()
   for i = #state.citations, 1, -1 do
     local citation = state.citations[i]
     if now >= citation.due then
@@ -1823,14 +2049,36 @@ function M.onUpdate(dtReal, dt)
   for index = #state.cases, 1, -1 do
     if state.cases[index] then updateCase(state.cases[index], now) end
   end
+  updateSting(now)
 end
 
 function M.onPursuitAction(id, action)
   if not state then return end
+  -- The undercover chase is on whatever the player was driving, usually not the stolen car itself.
+  local sting = state.sting
+  if sting and sting.pursuing == id and (action == "evade" or action == "arrest") then
+    state.sting = nil
+    if action == "evade" then
+      -- When the chased car is the stolen one, the case handler below counts the evasion.
+      if not caseForVehicle(id) then count("evaded") end
+      grantXp(15, "Undercover sting escaped")
+      notify("You lost the undercover units. The car is still yours, but it needs a new identity and a new colour.")
+      save()
+    else
+      local serial = sting.serial
+      save()
+      -- Defer like the arrest below, until RLS has finished its own arrest handler.
+      core_jobsystem.create(function(job)
+        job.sleep(0.1)
+        local case = state and findCase(serial)
+        if case then seize("The undercover sting ended in your arrest.", case) end
+      end, 1)
+    end
+  end
   local arrestedCase = caseForVehicle(id)
   if not arrestedCase then return end
   if action == "evade" then
-    arrestedCase.patrolCooldownUntil = os.time() + 45
+    arrestedCase.patrolCooldownUntil = gameTime() + 45
     arrestedCase.evades = (arrestedCase.evades or 0) + 1
     count("evaded")
     if arrestedCase.evades <= 3 then grantXp(10, "Police evaded in a stolen vehicle") end
@@ -1856,12 +2104,14 @@ function M.onOverhaulBeforeSetProfile()
   profile, state, attempted, liveId = nil, nil, nil, nil
   negotiation, lastResult = nil, nil
   ignition, ignitionCooldown, starter = nil, 0, nil
-  forcedStops = {}
+  forcedStops, bypassMisses, parkedTicks = {}, {}, 0
 end
 
 function M.onClientEndMission()
   attempted, liveId, ignition, starter = nil, nil, nil, nil
-  forcedStops = {}
+  forcedStops, bypassMisses, parkedTicks = {}, {}, 0
+  -- Vehicle ids do not survive a level change: an ongoing undercover chase starts over on the next drive.
+  if state and state.sting then state.sting.pursuing = nil end
 end
 
 function M.onExtensionUnloaded()

@@ -97,10 +97,18 @@
 
           <section v-if="state.result" class="ug-result" :class="state.result.kind">
             <strong v-if="state.result.kind === 'sold'">Sold for {{ money(state.result.price) }}</strong>
+            <strong v-else-if="state.result.kind === 'sting'">The buyer was an undercover cop</strong>
             <strong v-else>Police raided the handover</strong>
             <span v-if="state.result.kind === 'sold'">The money is in your account.</span>
+            <span v-else-if="state.result.kind === 'sting'">{{ stingText }}</span>
             <span v-else>The vehicle was seized and the theft fine was charged.</span>
             <button class="ug-link" @click="call('undergroundDismissResult()')">Dismiss</button>
+          </section>
+
+          <section v-if="state.sting && !(state.result && state.result.kind === 'sting')" class="ug-result sting">
+            <strong>{{ state.sting.chasing ? "Undercover units are chasing you" : "Undercover units are looking for you" }}</strong>
+            <span v-if="state.sting.chasing">Lose them. If they catch you, the stung car is seized and the theft fine is charged.</span>
+            <span v-else>The next time you drive, expect a chase. The operation ends in {{ clock(state.sting.remaining) }}.</span>
           </section>
 
           <div v-if="!vehicle" class="ug-empty">
@@ -124,16 +132,17 @@
                     <template v-if="vehicle.heat.remaining > 0"> · {{ clock(vehicle.heat.remaining) }} to cool</template>
                     <span class="ug-tip" role="tooltip">
                       {{ vehicle.heat.detail }}
-                      <template v-if="vehicle.heat.stage === 'hot'"> Hot cars pay 54% of normal underground value; warm cars pay 58%, and cold cars pay 61%.</template>
-                      <template v-else-if="vehicle.heat.stage === 'warm'"> Warm cars pay 58% of normal underground value. Stay clear of patrols to reach the full 61% rate.</template>
-                      <template v-else> This car pays the full 61% underground rate.</template>
+                      <template v-if="vehicle.heat.stage === 'hot'"> Hot cars sell for {{ rate('hot') }}% of the car's value, warm cars for {{ rate('warm') }}% and cold cars for {{ rate('cold') }}%.</template>
+                      <template v-else-if="vehicle.heat.stage === 'warm'"> Warm cars sell for {{ rate('warm') }}% of the car's value. Stay clear of patrols to reach the full {{ rate('cold') }}%.</template>
+                      <template v-else> This car sells for the full {{ rate('cold') }}% of its value.</template>
                     </span>
                   </span>
                 </div>
               </div>
             </section>
 
-            <p v-if="vehicle.phase === 'transit'" class="ug-step">Store it first: park inside a garage you own and get out.</p>
+            <p v-if="vehicle.phase === 'transit'" class="ug-step">Store it first: stop it inside a garage you own. You earn the theft XP once it is stored.</p>
+            <p v-else-if="vehicle.phase === 'stored' && state.sting && state.sting.serial === vehicle.serial" class="ug-step">Police are after this car. No crew will touch it until you lose them.</p>
             <p v-else-if="vehicle.phase === 'stored'" class="ug-step">Change its identity at the garage computer before selling.</p>
             <p v-else-if="vehicle.phase === 'chopping'" class="ug-step">Being stripped for parts: {{ clock(vehicle.workshopRemaining) }} left.</p>
             <p v-else-if="vehicle.phase === 'workshop'" class="ug-step">Identity change in progress: {{ clock(vehicle.workshopRemaining) }} left.</p>
@@ -153,7 +162,7 @@
                   <button class="ug-btn primary" :disabled="!(price > 0)" @click="call(`undergroundList(${price})`)">List for sale</button>
                 </div>
                 <p v-if="vehicle.repainted === false" class="ug-warning">
-                  The paint still matches the theft report. One in five handovers gets raided. Repaint it at the garage computer first.
+                  The paint still matches the theft report: {{ state.raidChance }}% of handovers get raided. Repaint it at the garage computer first.
                 </p>
               </section>
             </template>
@@ -176,6 +185,11 @@
                 </div>
               </section>
 
+              <p v-if="vehicle.repainted === false" class="ug-warning">
+                The paint still matches the theft report: {{ state.raidChance }}% of handovers get raided.
+              </p>
+              <p v-if="vehicle.handoverBlocked" class="ug-warning">{{ vehicle.handoverBlocked }}</p>
+
               <h2 class="ug-section">Offers <span v-if="offers.length">({{ offers.length }})</span></h2>
               <p v-if="!offers.length" class="ug-wait">
                 Waiting for buyers<template v-if="vehicle.nextOfferIn != null"> · next contact in ~{{ clock(vehicle.nextOfferIn) }}</template>
@@ -195,7 +209,7 @@
                 <div class="ug-actions">
                   <button class="ug-btn ghost" @click="call(`undergroundDecline(${offer.id})`)">Decline</button>
                   <button class="ug-btn ghost" :disabled="offer.value >= vehicle.listedPrice" @click="call(`undergroundNegotiate(${offer.id})`)">Negotiate</button>
-                  <button class="ug-btn primary" @click="call(`undergroundAccept(${offer.id})`)">Accept</button>
+                  <button class="ug-btn primary" :disabled="!!vehicle.handoverBlocked" @click="call(`undergroundAccept(${offer.id})`)">Accept</button>
                 </div>
               </article>
             </template>
@@ -240,6 +254,8 @@ const skillPercent = computed(() => {
   return span > 0 ? Math.max(0, Math.min(100, ((Number(s.xp) - Number(s.from)) / span) * 100)) : 0
 })
 const money = value => `$${Math.round(Number(value) || 0).toLocaleString()}`
+// Underground rate per heat stage in percent of the car's value, with the player's perks (from Lua).
+const rate = stage => Number(state.value?.rates?.[stage]) || 0
 const clock = seconds => {
   const s = Math.max(0, Math.round(Number(seconds) || 0))
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`
@@ -326,10 +342,13 @@ const priceHint = computed(() => {
   return "Around value: offers arrive at a normal pace."
 })
 
+const stingText = "The deal is off and the car's new plate is burned. Lose the police: if they catch you, the car is seized and the theft fine is charged. To sell it again, change its identity and repaint it once more."
+
 const resolved = computed(() => {
   const n = negotiation.value
   const result = n?.result
   if (result?.kind === "sold") return { title: `Sold for ${money(result.price)}`, text: "The money is in your account.", tone: "ok" }
+  if (result?.kind === "sting") return { title: "Undercover cop", text: stingText, tone: "bad" }
   if (result?.kind === "raided") return { title: "Police raid", text: "The buyer's contact recognized the paint. The vehicle was seized and the theft fine was charged.", tone: "bad" }
   if (n?.status === "failed") return { title: "No deal", text: "The buyer lost patience and walked away.", tone: "bad" }
   return { title: "Deal", text: "", tone: "ok" }
@@ -546,7 +565,7 @@ onUnmounted(() => {
   display: none;
   position: absolute;
   top: calc(100% + 0.4rem);
-  left: 0;
+  right: 0;
   z-index: 10;
   width: 15rem;
   max-width: 70vw;
@@ -664,7 +683,7 @@ onUnmounted(() => {
   display: grid;
   gap: 0.25rem;
   &.sold { border-color: rgba(95, 217, 154, 0.5); strong { color: var(--ug-good); } }
-  &.raided { border-color: rgba(255, 107, 99, 0.5); strong { color: var(--ug-bad); } }
+  &.raided, &.sting { border-color: rgba(255, 107, 99, 0.5); strong { color: var(--ug-bad); } }
   span { color: var(--ug-muted); }
 }
 </style>
