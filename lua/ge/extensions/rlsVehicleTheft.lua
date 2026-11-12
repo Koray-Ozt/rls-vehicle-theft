@@ -666,6 +666,7 @@ end
 
 -- auto: called every second after the player leaves the car; repeat a refusal only when it changes.
 local lastStoreRefusal
+local parkedTicks = 0 -- seconds the carried car has sat still inside an owned garage
 local function store(vehicle, auto)
   local case = transitCase()
   if not case then return end
@@ -1709,11 +1710,24 @@ local function updateCase(case, now)
   local stolen = case.phase == "transit" and liveId and getObjectByID(liveId)
   if stolen and ownedGarageNear(stolen) then
     if be:getPlayerVehicleID(0) == liveId then
-      ui_message("Stolen vehicle: park inside the garage, then press Ctrl+Shift+J or get out to store it.",
+      -- A car that is only parked, never stored, is not in the inventory: saving and reloading would lose it.
+      -- Once it sits still inside the garage, store it without waiting for a key press or for the player to get out.
+      if stolen:getVelocity():length() <= 1 then
+        parkedTicks = parkedTicks + 1
+        if parkedTicks >= 3 and store(stolen, true) then
+          parkedTicks = 0
+          return
+        end
+      else
+        parkedTicks = 0
+      end
+      ui_message("Stolen vehicle: park inside the garage and it will be stored (or press Ctrl+Shift+J).",
         2, "rlsVehicleTheftStore")
     elseif gameplay_walk.isWalking() and store(stolen, true) then
       return
     end
+  else
+    parkedTicks = 0
   end
 
   -- After the identity change only an unrepainted car can still be matched to the theft report.
