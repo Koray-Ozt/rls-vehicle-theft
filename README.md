@@ -203,6 +203,7 @@ This release adds undercover police buyers, makes heat matter on the street as w
 - All timers (report delays, heat, workshop and chop jobs, offers, test-drive bans and investigations) now run on play time instead of the computer clock. They keep running while the game is paused or the phone is open, but no longer advance while the game is closed.
 
 **Fixed**
+- Taking a car from its driver (a traffic car flagged down while driving) put you in the passenger seat, where the car cannot be driven. BeamNG keeps the traffic driver as a seat occupant after the car leaves traffic, so the driver's seat looked taken. That occupant is now removed and you are seated as the driver. Dealership cars use the same seating.
 - A stolen car was never stored automatically while you sat in it, still, inside the garage if you already had another open case. Another case reset the countdown every second. Getting out or pressing the key still worked.
 - Canceling the ignition bypass, or closing its screen, after a miss reset the misses and skipped the 8-second wait, so a miss could be undone for free. A started attempt that is canceled now counts like a failed one: the wait applies and the tripped alarm carries over to the next attempt on that car.
 - Closing the ignition bypass screen some other way than **Cancel** left a flagged-down traffic car stopped in the road with its parking brake on.

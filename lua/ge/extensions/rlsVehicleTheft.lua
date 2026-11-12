@@ -602,6 +602,38 @@ local function replaceProp(vehicle)
   return replacement or nil
 end
 
+-- BeamNG's seat system (gameplay_seatOccupants, a level preset) draws a traffic car's AI driver as a dummy
+-- occupant in its driver seat, and the dummy stays after the car leaves traffic. Entering the car then
+-- seats the player in a free passenger seat with passenger permissions, which block driving.
+local function driverSeat(seats, id)
+  for _, seat in ipairs(seats.getSeats(id) or {}) do
+    if seat.isDriver then return seat end
+  end
+end
+
+-- Puts the player in the driver's seat of a vehicle they just took.
+local function enterAsDriver(vehicle)
+  local id = vehicle:getID()
+  local seats = gameplay_seatOccupants
+  local seat
+  if seats and seats.getSeats then
+    -- RLS gives older all-passenger seat layouts a driver seat first, as its own walk-in entry does.
+    if overhaul_vehicles_legacyDriverSeat then overhaul_vehicles_legacyDriverSeat.refresh(id) end
+    seat = driverSeat(seats, id)
+    -- clearDummyOccupant only ever removes a dummy, never a player.
+    if seat and seat.occupantType == "dummy" and seats.clearDummyOccupant then
+      seats.clearDummyOccupant(id, seat.seatId)
+    end
+  end
+  gameplay_walk.getInVehicle(vehicle)
+  -- Safety net: if entry still chose a passenger seat, move the player to the now free driver seat.
+  local presence = seat and seats.getPlayerPresence and seats.getPlayerPresence(0)
+  if presence and presence.vehicleId == id and presence.seatId ~= seat.seatId and seats.setOccupied then
+    local ok, err = pcall(seats.setOccupied, id, seat.seatId, 0, nil, "driver")
+    if not ok then log("W", "rlsVehicleTheft", "Could not move the player to the driver seat: " .. tostring(err)) end
+  end
+end
+
 -- Carjacking a moving car: the player flags it down from the road beside it and the driver is made to
 -- stop with the vehicle AI's own "stop" mode (lua/vehicle/ai.lua), which brakes to a halt, sets the
 -- parking brake and disables the AI. If the attempt is abandoned the car goes back to traffic.
@@ -1116,7 +1148,7 @@ function M.attempt()
         overhaul_career_career.setAutosaveEnabled(true)
       end
       overhaul_career_market_inspectVehicle.leaveSaleCallback("dontDespawn", false, false, "Dealership vehicle taken.")
-      if be:getPlayerVehicleID(0) ~= info.vehId then gameplay_walk.getInVehicle(vehicle) end
+      if be:getPlayerVehicleID(0) ~= info.vehId then enterAsDriver(vehicle) end
       core_vehicleBridge.executeAction(vehicle, "setFreeze", false)
       listing.markedSold, listing.soldViewCounter = true, 1
       begin(vehicle, activeDrive and "testDrive" or "inspection", seller, info.value, delay, dealer.associatedOrganization,
@@ -1183,7 +1215,7 @@ local function updateAttempt(dt)
       return false
     end
     local id = vehicle:getID()
-    gameplay_walk.getInVehicle(vehicle)
+    enterAsDriver(vehicle)
     if not gameplay_traffic.getTrafficData()[id] then gameplay_traffic.insertTraffic(id, true, true) end
     local clean = not result.skipped and result.misses == 0
     begin(vehicle, "street", nil, 0, delay, nil, result.skipped, {
