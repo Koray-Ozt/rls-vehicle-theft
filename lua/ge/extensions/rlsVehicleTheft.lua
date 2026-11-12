@@ -23,6 +23,7 @@ local rules = {
   inspection = {fine = 0.42, minimum = 4500, reputation = 120},
   testDrive = {fine = 0.50, minimum = 5500, reputation = 220},
 }
+local heatHotSeconds, heatWarmSeconds = 120, 240
 
 local function notify(message)
   ui_message(message, 7, "rlsVehicleTheft")
@@ -61,6 +62,11 @@ local function load()
       -- Before 0.6 a single offer was requested at the garage computer; those cases go back to "ready"
       -- so the vehicle can be listed in the Underground phone app.
       if case.phase == "offer" then case.phase, case.offer, case.expiresAt = "ready", nil, nil end
+      -- Older cases used one six-minute hot window tied directly to the expected report time.
+      -- Preserve that window while splitting it into a hot and warm stage.
+      local reportAt = case.reportAt or os.time()
+      case.heatHotUntil = case.heatHotUntil or (reportAt + heatHotSeconds)
+      case.heatWarmUntil = case.heatWarmUntil or (reportAt + heatHotSeconds + heatWarmSeconds)
     end
     attempted, liveId, patrolCheck = nil, nil, 0
     negotiation, lastResult, selectedSerial = nil, nil, nil
@@ -610,8 +616,10 @@ local function begin(vehicle, source, seller, value, delay, organizationId, imme
   state.serial = state.serial + 1
   -- Every case you are already holding makes the report come in sooner.
   delay = delay / (1 + 0.35 * #state.cases)
+  local reportAt = os.time() + math.max(1, math.ceil(delay))
   table.insert(state.cases, {serial = state.serial, source = source, seller = seller, value = tonumber(value) or 0,
-    reportAt = os.time() + math.max(1, math.ceil(delay)), phase = "transit", immediate = immediate or nil})
+    reportAt = reportAt, heatHotUntil = reportAt + heatHotSeconds,
+    heatWarmUntil = reportAt + heatHotSeconds + heatWarmSeconds, phase = "transit", immediate = immediate or nil})
   patrolCheck = 0
   if source == "testDrive" then
     state.bans[seller] = os.time() + 1800
@@ -1166,16 +1174,24 @@ local offerTtlRange = {150, 300}
 local buyerArchetypes = {
   chopShop = {label = "Chop shop", price = 0.84, patience = 0.7,
     quotes = {"I only want the parts. Cash, no questions.", "Parts are parts. Here's my number.",
-      "It'll be in pieces by tonight. That's what it's worth to me."}},
+      "It'll be in pieces by tonight. That's what it's worth to me."},
+    hotQuote = "This one's still hot. I'm pricing in the attention, not just the parts.",
+    warmQuote = "It's cooling off. Leave it quiet a little longer and you'll get a better number."},
   exporter = {label = "Exporter", price = 0.97, patience = 1.15,
     quotes = {"Container leaves Thursday. I can make room for it.", "Overseas buyers like this model. Fair price.",
-      "Clean paperwork? Then we can talk."}},
+      "Clean paperwork? Then we can talk."},
+    hotQuote = "I can't put a hot car in a container. The low number covers the risk.",
+    warmQuote = "The heat's dropping. I can do better once the report goes cold."},
   racer = {label = "Street racer", price = 0.92, patience = 0.85,
     quotes = {"Does it pull? I'll take it if it pulls.", "Need something nobody knows for Friday night.",
-      "Cash now if you don't ask what it's for."}},
+      "Cash now if you don't ask what it's for."},
+    hotQuote = "Too many eyes on this one. Take the offer or wait it out.",
+    warmQuote = "It's less risky now. Still, I know the paint in that report."},
   fixer = {label = "Fixer", price = 0.9, patience = 1.0,
     quotes = {"I have a client. I take my cut, you take yours.", "Quiet deal, quiet money.",
-      "My people don't haggle long. Neither should you."}},
+      "My people don't haggle long. Neither should you."},
+    hotQuote = "Your car's still on the wire. My offer reflects the risk.",
+    warmQuote = "The attention is fading. Give it more time and the price will improve."},
 }
 local buyerArchetypeKeys = {"chopShop", "exporter", "racer", "fixer"}
 local buyerNames = {"Sly", "Dutch", "Moth", "Kestrel", "Rook", "Nico", "Viper", "Ghost", "Tank", "Mickey",
@@ -1185,10 +1201,42 @@ local function roundPrice(value)
   return math.max(50, math.floor((tonumber(value) or 0) / 50 + 0.5) * 50)
 end
 
--- What the underground pays for this car; a freshly reported car is "hot" and worth less.
-local function undergroundValue(case)
-  local hot = os.time() < (case.reportAt or 0) + 360
-  return math.floor(currentValue(case) * (hot and 0.54 or 0.61) * perk("fenceValue", 1)), hot
+-- Heat cools in two clear stages. A new plate helps immediately; a new plate and paint break the link.
+local function heatStatus(case, now)
+  now = now or os.time()
+  local paintChanged = repainted(case)
+  if case.identity and paintChanged ~= false then
+    return {stage = "cold", label = "Cold", remaining = 0, multiplier = 0.61,
+      detail = "New plate and paint: patrols can no longer match this car to the theft report."}
+  end
+
+  local stage, untilAt, multiplier, detail
+  if now < (case.heatHotUntil or (case.reportAt or now) + heatHotSeconds) then
+    stage, untilAt, multiplier = "hot", case.heatHotUntil, 0.54
+    detail = now < (case.reportAt or 0)
+      and "The theft report is still pending, but buyers already price the car as hot."
+      or "Fresh theft report. Buyers pay less and patrols are actively looking for the car."
+  elseif now < (case.heatWarmUntil or (case.reportAt or now) + heatHotSeconds + heatWarmSeconds) then
+    stage, untilAt, multiplier = "warm", case.heatWarmUntil, 0.58
+    detail = "Attention is fading. Keep the car out of sight until it cools for the full value."
+  else
+    stage, untilAt, multiplier = "cold", nil, 0.61
+    detail = "The theft report has cooled. Buyers pay the full underground rate."
+  end
+
+  -- Changing only the plate makes the car less exposed, but its original paint is still identifiable.
+  if case.identity and paintChanged == false and stage == "hot" then
+    stage, untilAt, multiplier = "warm", case.heatWarmUntil, 0.58
+    detail = "The new plate helps, but the original paint still matches the theft report. Repaint it to break the link."
+  end
+  return {stage = stage, label = stage == "hot" and "Hot" or stage == "warm" and "Warm" or "Cold",
+    remaining = untilAt and math.max(0, untilAt - now) or 0, multiplier = multiplier, detail = detail}
+end
+
+-- What the underground pays; fresh reports draw the deepest discount.
+local function undergroundValue(case, now)
+  local heat = heatStatus(case, now)
+  return math.floor(currentValue(case) * heat.multiplier * perk("fenceValue", 1)), heat
 end
 
 -- marketplace.lua offerTimeMultiplierForRatio: cheap listings get offers sooner, greedy ones later.
@@ -1230,7 +1278,7 @@ end
 -- marketplace.lua generateOffer, scaled to underground prices and buyer types.
 local function generateOffer(case, now)
   local listing = case.listing
-  local base = undergroundValue(case)
+  local base, heat = undergroundValue(case, now)
   if base <= 0 then return end
   local key = buyerArchetypeKeys[math.random(1, #buyerArchetypeKeys)]
   local archetype = buyerArchetypes[key]
@@ -1249,7 +1297,9 @@ local function generateOffer(case, now)
     value = roundPrice(value),
     createdAt = now,
     expiresAt = now + math.random(offerTtlRange[1], offerTtlRange[2]),
-    quote = archetype.quotes[math.random(1, #archetype.quotes)],
+    quote = heat.stage == "hot" and archetype.hotQuote
+      or heat.stage == "warm" and archetype.warmQuote
+      or archetype.quotes[math.random(1, #archetype.quotes)],
   }
   table.insert(listing.offers, offer)
   notifyPhone("New underground offer", string.format("%s offers %s for your vehicle.", offer.buyer, money(offer.value)))
@@ -1333,14 +1383,15 @@ function M.getUndergroundState()
   view.skill = skillProgress()
   view.limit = caseLimit()
   view.cases = {}
+  local now = os.time()
   local case = selectedCase()
   for _, other in ipairs(state.cases) do
     local record = other.inventoryId and inventory().getVehicles()[other.inventoryId]
+    local heat = heatStatus(other, now)
     table.insert(view.cases, {serial = other.serial, phase = other.phase,
-      name = record and record.niceName or "Stolen vehicle", selected = other == case})
+      name = record and record.niceName or "Stolen vehicle", selected = other == case, heatLabel = heat.label})
   end
   if not case then return view end
-  local now = os.time()
   local record = case.inventoryId and inventory().getVehicles()[case.inventoryId]
   local vehicle = {serial = case.serial, phase = case.phase, identity = case.identity, source = case.source,
     repainted = repainted(case)}
@@ -1351,8 +1402,9 @@ function M.getUndergroundState()
   if case.phase == "chopping" then vehicle.workshopRemaining = math.max(0, (case.readyAt or now) - now) end
   if case.phase == "workshop" then vehicle.workshopRemaining = math.max(0, (case.readyAt or now) - now) end
   if case.inventoryId and record then
-    local base, hot = undergroundValue(case)
-    vehicle.marketValue, vehicle.hot, vehicle.suggestedPrice = base, hot, roundPrice(base)
+    local base, heat = undergroundValue(case, now)
+    vehicle.marketValue, vehicle.heat, vehicle.suggestedPrice = base, heat, roundPrice(base)
+    vehicle.hot = heat.stage == "hot"
   end
   if case.listing then
     vehicle.listedPrice = case.listing.price
@@ -1692,12 +1744,16 @@ local function updateCase(case, now)
   local patrol = patrolId and getObjectByID(patrolId)
   if patrol and distance(patrol, vehicle) <= 160 then
     if not case.identity then
+      case.heatHotUntil, case.heatWarmUntil = now + heatHotSeconds, now + heatHotSeconds + heatWarmSeconds
+      notify("A patrol spotted the stolen car. It's hot again; keep it out of sight to cool it down.")
+      save()
       police.setPursuitMode(1, id, {patrolId})
     elseif case.sightedPatrol ~= patrolId then
       -- New plate, reported paint: each patrol gets one look at the car.
       case.sightedPatrol = patrolId
       if math.random() < paintRecognitionChance() then
-        notify("A patrol recognized the stolen vehicle by its original paint.")
+        case.heatHotUntil, case.heatWarmUntil = now + heatHotSeconds, now + heatHotSeconds + heatWarmSeconds
+        notify("A patrol recognized the stolen vehicle by its original paint. It's hot again; repaint it to break the link.")
         police.setPursuitMode(1, id, {patrolId})
       end
       save()

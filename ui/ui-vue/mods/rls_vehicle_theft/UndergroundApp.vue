@@ -63,7 +63,7 @@
               :key="c.serial"
               class="ug-case"
               :class="{ on: c.selected }"
-              @click="call(`undergroundSelect(${c.serial})`)">{{ c.name }}</button>
+              @click="call(`undergroundSelect(${c.serial})`)">{{ c.name }} · {{ c.heatLabel }}</button>
             <span class="ug-cases-note">{{ state.cases.length }} / {{ state.limit }} cars</span>
           </section>
 
@@ -91,10 +91,20 @@
                 <div class="ug-badges">
                   <span v-if="vehicle.repainted === false" class="badge bad">Original paint · risky</span>
                   <span v-else-if="vehicle.repainted === true" class="badge good">Repainted</span>
-                  <span v-if="vehicle.hot" class="badge warn">Hot · lower prices</span>
+                  <span v-if="vehicle.heat" class="badge" :class="`heat-${vehicle.heat.stage}`">
+                    {{ vehicle.heat.label }}
+                    <template v-if="vehicle.heat.remaining > 0"> · {{ clock(vehicle.heat.remaining) }} to cool</template>
+                  </span>
                 </div>
               </div>
             </section>
+
+            <p v-if="vehicle.heat" class="ug-heat-note" :class="`heat-${vehicle.heat.stage}`">
+              {{ vehicle.heat.detail }}
+              <template v-if="vehicle.heat.stage === 'hot'"> Hot cars pay 54% of normal underground value; warm cars pay 58%, and cold cars pay 61%.</template>
+              <template v-else-if="vehicle.heat.stage === 'warm'"> Warm cars pay 58% of normal underground value. Stay clear of patrols to reach the full 61% rate.</template>
+              <template v-else> This car pays the full 61% underground rate.</template>
+            </p>
 
             <p v-if="vehicle.phase === 'transit'" class="ug-step">Store it first: park inside a garage you own and get out.</p>
             <p v-else-if="vehicle.phase === 'stored'" class="ug-step">Change its identity at the garage computer before selling.</p>
@@ -402,6 +412,20 @@ onUnmounted(() => {
   background: rgba(247, 144, 64, 0.1);
   color: #f6c7a1;
 }
+.ug-heat-note {
+  margin: -0.3rem 0 0;
+  padding: 0.55rem 0.7rem;
+  border-left: 2px solid var(--ug-accent);
+  background: rgba(247, 144, 64, 0.07);
+  color: #f6c7a1;
+  font-size: 0.74rem;
+  line-height: 1.4;
+  &.heat-warm { border-color: #e7c45b; color: #e9d99d; background: rgba(231, 196, 91, 0.07); }
+  &.heat-cold { border-color: var(--ug-good); color: #a6e8c4; background: rgba(95, 217, 154, 0.07); }
+}
+.badge.heat-hot { background: rgba(255, 107, 99, 0.15); color: var(--ug-bad); }
+.badge.heat-warm { background: rgba(231, 196, 91, 0.15); color: #e9d99d; }
+.badge.heat-cold { background: rgba(95, 217, 154, 0.15); color: var(--ug-good); }
 .ug-wait { background: transparent; color: var(--ug-muted); padding: 0.2rem 0.1rem; }
 
 .ug-row {

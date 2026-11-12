@@ -1,6 +1,6 @@
 # RLS Vehicle Theft
 
-Version 0.8.0 adds vehicle theft to RLS Career Overhaul. Take a vehicle from the street or a dealership, store it in an owned garage, change its identity, and sell it to underground buyers from the **Underground** phone app. Police, vehicle damage, workshop costs, and fines can turn a sale into a loss.
+Version 0.8.1 adds a clearer hot vehicle system to the vehicle theft feature in RLS Career Overhaul. Take a vehicle from the street or a dealership, store it in an owned garage, change its identity, and sell it to underground buyers from the **Underground** phone app. Police, vehicle damage, workshop costs, and fines can turn a sale into a loss.
 
 This is an unofficial add-on. It is not affiliated with RLS Modding or BeamNG GmbH.
 
@@ -77,7 +77,7 @@ To change the key, open BeamNG's controls settings and look for **RLS Vehicle Th
 
 ### Asking price and negotiation
 
-The app shows the vehicle's underground value: about 61% of its normal sell value, or 54% while the theft is still fresh (Vehicle Theft perks raise it by up to 15%). Listing below that value brings offers sooner and closer to your price; listing well above it makes buyers rarer and keeps their offers near the underground value. This follows the RLS marketplace.
+The app shows the vehicle's heat state, the time until it cools, and why its value is reduced. A fresh report is **Hot** for 2 minutes at 54% of normal sell value, then **Warm** for 4 minutes at 58%, and then **Cold** at 61% (Vehicle Theft perks raise each rate by up to 15%). A patrol sighting that starts a pursuit or recognizes the original paint refreshes both timers. Changing the plate caps heat at Warm while the original paint remains; changing the plate and repainting it breaks the match and makes it Cold. Buyers explain hot and warm offers in their messages. Listing below the shown underground value brings offers sooner and closer to your price; listing well above it makes buyers rarer and keeps their offers near the underground value. This follows the RLS marketplace.
 
 Negotiation uses the RLS negotiation screen. Each counter-offer costs the buyer patience, more so the further your price is from the underground value. A buyer moves part of the way toward your price, never past their budget, and walks away when their patience runs out, which removes the offer. Buyer types differ: chop shops pay least and lose patience fastest, exporters pay most and stay longest.
 
@@ -117,7 +117,7 @@ Theft milestones appear with RLS's general milestones and pay money when claimed
 
 - **Taking a traffic vehicle from its driver** is reported at once, and the nearest police unit starts a pursuit right away, even if it has not seen you yet.
 - **Taking a parked vehicle** goes unnoticed for 90–180 seconds if you match every signal cleanly. Each missed signal trips the alarm and shortens that time. Two or more nearby traffic vehicles act as witnesses and shorten it further.
-- Once a vehicle is reported, any patrol that spots it within about 160 m starts an RLS pursuit. After you evade a pursuit, patrols ignore the vehicle for 45 seconds.
+- Once a vehicle is reported, any patrol that spots it within about 160 m starts an RLS pursuit and refreshes its hot period. After you evade a pursuit, patrols ignore the vehicle for 45 seconds.
 - A new identity hides the plate, not the paint. If the vehicle still has the colour it had when you stored it, each new patrol that sees you driving it has a 30% chance to recognize it and start a pursuit, and the underground handover has a 20% chance to be raided, which seizes the vehicle and charges the theft fine. The Underground app marks such a vehicle as risky.
 - **Holding several cars raises the heat.** Each case you already have open makes the next report come in about 35% sooner, and raises the chance that a patrol recognizes an unrepainted car or that a handover is raided by 15% per extra case.
 - **Camera fines** (speed and red-light cameras) are not charged to you while you drive the stolen car with its original plate; they go to the registered owner. Once the identity change is done, the car is yours and RLS charges them normally.
@@ -158,6 +158,17 @@ The mod ships no automated tests. Theft, the ignition screen, storage, the ident
 This mod is released under the [MIT License](LICENSE). The license covers this mod's own files only. RLS Career Overhaul and BeamNG.drive are separate works under their own licenses and are not included.
 
 ## Changes
+
+### 0.8.1
+
+**Added**
+- A three-stage vehicle heat system: Hot (2 minutes, 54% value), Warm (4 minutes, 58%), then Cold (61%). Values still receive the existing Vehicle Theft perk multiplier.
+- The Underground app shows each case's heat state, time to its next stage, payout rate, and what actions affect it.
+- Patrol sightings that start a pursuit or recognize the original paint refresh the hot and warm periods. Changing the plate caps heat at Warm while the original paint remains; changing the plate and paint makes the vehicle Cold.
+- Buyer messages now explain the risk discount on Hot and Warm vehicles.
+
+**Changed**
+- Police report timing and the vehicle's heat timers are stored separately, preserving existing report delays while allowing patrol sightings to refresh heat.
 
 ### 0.8.0
 
