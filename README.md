@@ -162,15 +162,19 @@ This mod is released under the [MIT License](LICENSE). The license covers this m
 ### 0.8.1
 
 **Added**
-- A three-stage vehicle heat system: Hot (2 minutes, 54% value), Warm (4 minutes, 58%), then Cold (61%). Values still receive the existing Vehicle Theft perk multiplier.
-- The Underground app shows each case's heat state, time to its next stage, payout rate, and what actions affect it.
-- Patrol sightings that start a pursuit or recognize the original paint refresh the hot and warm periods. Changing the plate caps heat at Warm while the original paint remains; changing the plate and paint makes the vehicle Cold.
-- Buyer messages now explain the risk discount on Hot and Warm vehicles.
-- The Underground app has a Settings page for changing the take/store action binding to a keyboard key, mouse button or controller button. BeamNG saves the binding in the user's input settings.
-- The shortcut does not run while the Underground app has focus, preventing a mouse binding from triggering during phone interactions.
+- Three-stage vehicle heat: Hot for 2 minutes at 54% value, Warm for 4 more minutes at 58%, then Cold at 61%. Existing Vehicle Theft value perks apply to every stage.
+- Heat status, time to cool, value impact and risk guidance in the Underground app. Buyer messages explain Hot and Warm discounts.
+- An Underground app Settings page to rebind the take/store action. Keyboard keys, middle/side mouse buttons and controller buttons can be assigned; Ctrl + Shift + J remains the default. BeamNG stores custom bindings in the user's input settings.
+- The Settings page is a gear icon in the Underground header, and the heat explanation (stage, value rates, risk) is a tooltip on the heat badge and its cooldown timer instead of a separate text block.
+- A stolen car is stored automatically once it is parked, still, inside a garage you own. Getting out inside the garage stores it too.
 
 **Changed**
-- Police report timing and the vehicle's heat timers are stored separately, preserving existing report delays while allowing patrol sightings to refresh heat.
+- Police report delays remain independent from heat cooldowns. A patrol sighting that starts a pursuit or recognizes the original paint refreshes heat.
+- Changing the plate caps heat at Warm while the original paint remains; changing both plate and paint makes the vehicle Cold.
+- The take/store action is ignored while the Underground app is open, so its controls cannot trigger it accidentally.
+
+**Fixed**
+- The "press Ctrl+Shift+J to store it" notifications named the default key even after it was rebound. They now show your current binding.
 
 ### 0.8.0
 

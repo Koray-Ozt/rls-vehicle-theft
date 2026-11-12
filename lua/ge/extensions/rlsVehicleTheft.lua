@@ -25,6 +25,20 @@ local rules = {
 }
 local heatHotSeconds, heatWarmSeconds = 120, 240
 
+-- The player's current binding for the take/store action, so messages never name a stale key.
+local function keyLabel()
+  local control = core_input_bindings and core_input_bindings.getControlForAction
+    and core_input_bindings.getControlForAction("rlsVehicleTheftAttempt")
+  if type(control) ~= "string" or control == "" then return "Ctrl+Shift+J" end
+  local parts = {}
+  for word in control:gmatch("[^%s%+]+") do
+    local button = word:match("^button(%d+)$")
+    parts[#parts + 1] = button and ("Mouse " .. (tonumber(button) + 1))
+      or (#word <= 2 and word:upper() or (word:sub(1, 1):upper() .. word:sub(2)))
+  end
+  return table.concat(parts, "+")
+end
+
 local function notify(message)
   ui_message(message, 7, "rlsVehicleTheft")
 end
@@ -638,7 +652,7 @@ local function begin(vehicle, source, seller, value, delay, organizationId, imme
   if immediate then
     notify("The driver saw you take the vehicle. Police are responding. Lose them and store it at a garage you own.")
   else
-    notify("Vehicle taken. Drive to a garage you own and press Ctrl+Shift+J to store it.")
+    notify("Vehicle taken. Drive to a garage you own and press " .. keyLabel() .. " to store it.")
   end
 end
 
@@ -1721,7 +1735,7 @@ local function updateCase(case, now)
       else
         parkedTicks = 0
       end
-      ui_message("Stolen vehicle: park inside the garage and it will be stored (or press Ctrl+Shift+J).",
+      ui_message("Stolen vehicle: park inside the garage and it will be stored (or press " .. keyLabel() .. ").",
         2, "rlsVehicleTheftStore")
     elseif gameplay_walk.isWalking() and store(stolen, true) then
       return

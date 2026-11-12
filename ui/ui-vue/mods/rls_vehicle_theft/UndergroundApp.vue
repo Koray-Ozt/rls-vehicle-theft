@@ -42,8 +42,14 @@
           <h1>Underground</h1>
           <p>Off-the-books vehicle sales</p>
         </div>
-        <button class="ug-settings-toggle" :disabled="isCapturing" @click="settingsOpen = !settingsOpen">
-          {{ settingsOpen ? "Market" : "Settings" }}
+        <button class="ug-settings-toggle" :class="{ on: settingsOpen }" :disabled="isCapturing"
+          :title="settingsOpen ? 'Back to Underground' : 'Settings'"
+          :aria-label="settingsOpen ? 'Back to Underground' : 'Settings'"
+          @click="settingsOpen = !settingsOpen">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="3" />
+            <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" />
+          </svg>
         </button>
       </header>
 
@@ -113,20 +119,19 @@
                 <div class="ug-badges">
                   <span v-if="vehicle.repainted === false" class="badge bad">Original paint · risky</span>
                   <span v-else-if="vehicle.repainted === true" class="badge good">Repainted</span>
-                  <span v-if="vehicle.heat" class="badge" :class="`heat-${vehicle.heat.stage}`">
+                  <span v-if="vehicle.heat" class="badge has-tip" :class="`heat-${vehicle.heat.stage}`" tabindex="0">
                     {{ vehicle.heat.label }}
                     <template v-if="vehicle.heat.remaining > 0"> · {{ clock(vehicle.heat.remaining) }} to cool</template>
+                    <span class="ug-tip" role="tooltip">
+                      {{ vehicle.heat.detail }}
+                      <template v-if="vehicle.heat.stage === 'hot'"> Hot cars pay 54% of normal underground value; warm cars pay 58%, and cold cars pay 61%.</template>
+                      <template v-else-if="vehicle.heat.stage === 'warm'"> Warm cars pay 58% of normal underground value. Stay clear of patrols to reach the full 61% rate.</template>
+                      <template v-else> This car pays the full 61% underground rate.</template>
+                    </span>
                   </span>
                 </div>
               </div>
             </section>
-
-            <p v-if="vehicle.heat" class="ug-heat-note" :class="`heat-${vehicle.heat.stage}`">
-              {{ vehicle.heat.detail }}
-              <template v-if="vehicle.heat.stage === 'hot'"> Hot cars pay 54% of normal underground value; warm cars pay 58%, and cold cars pay 61%.</template>
-              <template v-else-if="vehicle.heat.stage === 'warm'"> Warm cars pay 58% of normal underground value. Stay clear of patrols to reach the full 61% rate.</template>
-              <template v-else> This car pays the full 61% underground rate.</template>
-            </p>
 
             <p v-if="vehicle.phase === 'transit'" class="ug-step">Store it first: park inside a garage you own and get out.</p>
             <p v-else-if="vehicle.phase === 'stored'" class="ug-step">Change its identity at the garage computer before selling.</p>
@@ -438,6 +443,9 @@ onUnmounted(() => {
   font-size: 0.75rem;
   font-weight: 600;
   cursor: pointer;
+  display: grid;
+  place-items: center;
+  &.on { background: var(--ug-accent); color: #14161b; border-color: var(--ug-accent); }
   &:disabled { opacity: 0.45; cursor: default; }
 }
 .ug-settings { display: grid; gap: 0.7rem; }
@@ -533,17 +541,27 @@ onUnmounted(() => {
   background: rgba(247, 144, 64, 0.1);
   color: #f6c7a1;
 }
-.ug-heat-note {
-  margin: -0.3rem 0 0;
+.has-tip { position: relative; cursor: help; }
+.ug-tip {
+  display: none;
+  position: absolute;
+  top: calc(100% + 0.4rem);
+  left: 0;
+  z-index: 10;
+  width: 15rem;
+  max-width: 70vw;
   padding: 0.55rem 0.7rem;
-  border-left: 2px solid var(--ug-accent);
-  background: rgba(247, 144, 64, 0.07);
-  color: #f6c7a1;
+  border: 1px solid var(--ug-line);
+  border-radius: 0.5rem;
+  background: #1b1e25;
+  color: var(--ug-text);
   font-size: 0.74rem;
+  font-weight: 400;
   line-height: 1.4;
-  &.heat-warm { border-color: #e7c45b; color: #e9d99d; background: rgba(231, 196, 91, 0.07); }
-  &.heat-cold { border-color: var(--ug-good); color: #a6e8c4; background: rgba(95, 217, 154, 0.07); }
+  white-space: normal;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
 }
+.has-tip:hover .ug-tip, .has-tip:focus .ug-tip { display: block; }
 .badge.heat-hot { background: rgba(255, 107, 99, 0.15); color: var(--ug-bad); }
 .badge.heat-warm { background: rgba(231, 196, 91, 0.15); color: #e9d99d; }
 .badge.heat-cold { background: rgba(95, 217, 154, 0.15); color: var(--ug-good); }
