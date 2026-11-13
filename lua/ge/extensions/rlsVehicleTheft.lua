@@ -16,7 +16,9 @@ local ignitionHalfWidths = {2.1, 1.9, 1.7}
 -- so a lock also counts if the marker was in the zone within this many seconds before the click.
 local ignitionGrace = 0.16
 local ignitionMissPenalty, ignitionFailCooldown = 4, 8
+local ignitionLostGrace = 1.5
 local ignitionRoute = "rls-theft-ignition"
+local scrapRoute = "rls-theft-scrap"
 -- Misses of an abandoned bypass, per vehicle (not saved): the alarm a miss trips stays tripped on a retry.
 local bypassMisses = {}
 local starter
@@ -681,6 +683,26 @@ local function availableStreetCar(id, player, moving)
   if meters <= 4.5 then return vehicle, meters end
 end
 
+-- Writes why a street car stopped being takeable to the game log, so a report of "car no longer available"
+-- can be traced to the check that failed. Never throws.
+local function logStreetCarState(event, id)
+  local ok, text = pcall(function()
+    local vehicle = getObjectByID(id)
+    if not vehicle then return "vehicle gone" end
+    local player = walkingPlayer()
+    local parking = overhaul_integration_services_parking
+    local parked = parkedCars()[id]
+    local pool = core_vehicleActivePooling.getPoolOfVeh and core_vehicleActivePooling.getPoolOfVeh(id)
+    return string.format(
+      "active=%s speed=%.2f parkedData=%s cleared=%s poolMember=%s pool=%s isParkedField=%s walking=%s dist=%s",
+      tostring(be:getObjectActive(id)), vehicle:getVelocity():length(), tostring(parked ~= nil),
+      tostring(parked and parked.clearedForSpawn), tostring(parking and parking.isParkedPoolVehicle(id)),
+      tostring(pool and pool.name), tostring(vehicle.isParked), tostring(gameplay_walk.isWalking()),
+      player and string.format("%.1f", accessDistance(vehicle, player)) or "nil")
+  end)
+  log("W", "rlsVehicleTheft", event .. " | id=" .. tostring(id) .. " " .. (ok and text or ("state failed: " .. tostring(text))))
+end
+
 -- Traffic top-up. Taking a car out of traffic (removeTraffic) shrinks the traffic for good: the game never
 -- refills it, so every theft left one car fewer until only taxis and police (which cannot be stolen) remained.
 -- Each stolen traffic car is now owed back to the road and replaced by a freshly spawned traffic car, one at a
@@ -851,8 +873,17 @@ local function releaseStreetCar(vehicle)
   local parked = parkedCars()[id]
   if parked then
     local parking = overhaul_integration_services_parking
-    local pool = core_vehicleActivePooling.getPool("overhaulParking")
-    if not pool or not pool:removeVeh(id) then return false end
+    local pooling = core_vehicleActivePooling
+    local pool = pooling.getPool("overhaulParking")
+    if not (pool and pool:removeVeh(id)) then
+      -- The car may be held by another pool (or by none). Take it out of whichever pool holds it, and fail
+      -- only if a pool still refuses to let go.
+      local holder = pooling.getPoolOfVeh and pooling.getPoolOfVeh(id)
+      if holder and not holder:removeVeh(id) then
+        logStreetCarState("parked car could not be removed from its pool", id)
+        return false
+      end
+    end
     local spots = parking.getParkingSpots()
     local spot = spots and spots.objects and spots.objects[parked.parkingSpotId]
     if spot and spot.vehicle == id then spot.vehicle = nil end
@@ -957,6 +988,9 @@ end
 
 -- auto: called every second after the player leaves the car; repeat a refusal only when it changes.
 local lastStoreRefusal
+-- openScrapDialog and scrapCarried are defined with the chop shop below. scrapDialog is the open
+-- "no free slot: strip it for parts?" confirmation screen.
+local openScrapDialog, scrapCarried, scrapDialog
 local parkedTicks = 0 -- seconds the carried car has sat still inside an owned garage
 local function store(vehicle, auto)
   local case = transitCase()
@@ -982,9 +1016,23 @@ local function store(vehicle, auto)
     refuse("This garage is listed for sale. Use another garage you own.")
     return
   end
+  if not inventory().hasFreeSlot() then
+    -- Every slot is taken. Rather than lose the car, offer to have it stripped for parts. The offer is a
+    -- confirmation screen opened by the key press, never by the automatic check.
+    if auto then
+      refuse(string.format("No free garage slot. Press %s to sell the car for parts, or free a slot first.", keyLabel()))
+    elseif scrapDialog then
+      return
+    elseif vehicle:getVelocity():length() > 1 then
+      refuse("Stop the vehicle before selling it for parts.")
+    else
+      openScrapDialog(case)
+    end
+    return
+  end
   local space = manager.isGarageSpace(garage.id)
-  if not space or not space[1] or not inventory().hasFreeSlot() then
-    refuse("This garage has no free vehicle slots.")
+  if not space or not space[1] then
+    refuse("This garage has no free vehicle slots. Use another garage.")
     return
   end
   if not insideGarage(vehicle, garage) then
@@ -1057,8 +1105,11 @@ local function finishIgnition(challenge, vehicle, startMotor)
   -- complete() returns false to abort, or the vehicle actually taken when it replaced a prop.
   local taken = challenge.complete(vehicle, {skipped = not startMotor, misses = challenge.misses or 0})
   if taken == false then return end
+  local replaced = taken and taken ~= vehicle
   if taken then vehicle = taken end
-  if startMotor then
+  -- A stolen car should leave with its engine running. A replaced prop spawns with the ignition off, and
+  -- a parked car has no driver; the starter only cranks when the engine is not already running.
+  if startMotor or replaced or not challenge.seller then
     starter = {id = vehicle:getID(), token = challenge.token, elapsed = 0, untilSample = 0.15}
   end
 end
@@ -1252,9 +1303,16 @@ end
 local function updateIgnition(dt)
   local challenge = ignition
   if not canContinueIgnition(challenge) then
-    failIgnition(challenge, "The vehicle is no longer available for ignition bypass.")
+    -- RLS can deactivate or shuffle a parked car for a moment. Pause the attempt and give up only if the car
+    -- stays unavailable for a while.
+    challenge.lost = (challenge.lost or 0) + dt
+    if challenge.lost > ignitionLostGrace then
+      if not challenge.seller then logStreetCarState("ignition bypass lost the vehicle", challenge.id) end
+      failIgnition(challenge, "The vehicle is no longer available for ignition bypass.")
+    end
     return
   end
+  challenge.lost = nil
   if not challenge.stage then
     challenge.probeTime = challenge.probeTime - dt
     if challenge.probeTime <= 0 then failIgnition(challenge, "Could not read the ignition. Try again.") end
@@ -1398,6 +1456,8 @@ local function updateAttempt(dt)
 end
 
 local function currentValue(case)
+  -- A car stripped without a garage slot has no inventory record; its value was read when it was taken.
+  if not case.inventoryId then return math.max(0, tonumber(case.scrapValue) or 0) end
   return math.max(0, tonumber(overhaul_career_market_valueCalculator.getInventoryVehicleSellValue(case.inventoryId)) or 0)
 end
 
@@ -1424,6 +1484,7 @@ end
 -- average underground sale after the identity fee (about 31% of the value when cold), and a car with a
 -- fresh report pays less again, so stripping it at once does not dodge the heat.
 local chopSeconds = 90
+local scrapToken = 0
 local chopRates = {hot = 0.20, warm = 0.23, cold = 0.26}
 
 local function chopValue(case)
@@ -1440,17 +1501,106 @@ end
 
 local function finishChop(case)
   local price = chopValue(case)
-  exitVehicle(inventory().getVehicleIdFromInventoryId(case.inventoryId))
-  if inventory().removeVehicle(case.inventoryId) == false then return end
+  if case.inventoryId then
+    exitVehicle(inventory().getVehicleIdFromInventoryId(case.inventoryId))
+    if inventory().removeVehicle(case.inventoryId) == false then return end
+  end
+  -- Only a car stripped without a garage slot still carries its theft reward: a stored car had it paid out
+  -- when it was stored.
+  local reward = case.reward
+  case.reward = nil
   openInvestigation(case)
   removeCase(case)
   overhaul_career_economy_payment.reward({money = {amount = price}},
     {label = "Chop shop parts sale", category = "sale", tags = {"vehicleTheft"}}, true)
+  if reward then
+    count("stolen")
+    if reward.clean then count("cleanBypass") end
+    if reward.carjacked then count("carjacked") end
+  end
   save()
   notify("The car was stripped and sold for parts. Payment received: " .. money(price))
   count("chopped")
   count("revenue", price)
-  grantXp(10 + math.min(30, math.floor(price / 500)), "Parts sold to a chop shop")
+  grantXp(10 + (reward and tonumber(reward.xp) or 0) + math.min(30, math.floor(price / 500)), "Parts sold to a chop shop")
+end
+
+-- A carried car that has no garage slot to go to is not lost: the crew takes it away and strips it, which
+-- takes as long as the chop shop and pays the same. From then on it is an ordinary "chopping" case that has
+-- no inventory record: the phone app shows its countdown, it survives a reload and it counts toward the case
+-- limit. The car is gone from the world, so police, arrests and title checks (all matched by vehicle) can no
+-- longer touch it. The theft XP and milestones are paid when the crew finishes, like the money.
+-- RLS only prices cars it holds in the inventory, so the car is registered without taking a slot just long
+-- enough to read its value, then removed like a stripped car.
+scrapCarried = function(case)
+  scrapDialog = nil
+  local vehId = liveId
+  local id = vehId and inventory().addVehicle(vehId, nil, {owned = true, takesNoInventorySpace = true})
+  if not id then
+    notify("The chop shop could not take the car. Try again.")
+    return
+  end
+  local record = inventory().getVehicles()[id]
+  local name = record and record.niceName
+  local value = tonumber(overhaul_career_market_valueCalculator.getInventoryVehicleSellValue(id)) or 0
+  exitVehicle(vehId)
+  if inventory().removeVehicle(id) == false then
+    notify("The chop shop could not take the car. Try again.")
+    return
+  end
+  liveId, lastStoreRefusal, parkedTicks = nil, nil, 0
+  case.scrapValue, case.scrapName = math.max(0, value), type(name) == "string" and name or nil
+  case.value = math.max(case.value or 0, case.scrapValue)
+  case.phase, case.readyAt = "chopping", gameTime() + chopSeconds
+  save()
+  notify(string.format("No garage slot was free. The crew took the car away to strip it: about %s in %d seconds.",
+    money(chopValue(case)), chopSeconds))
+end
+
+openScrapDialog = function(case)
+  scrapToken = scrapToken + 1
+  scrapDialog = {token = scrapToken, serial = case.serial}
+  if extensions.ui_router.navigate(scrapRoute) == false then
+    scrapDialog = nil
+    notify("Could not open the confirmation screen.")
+  end
+end
+
+-- What the confirmation screen shows. The price itself is only known once RLS has priced the car, so the
+-- screen states the rate the crew pays at the car's current heat.
+function M.getScrapState()
+  local dialog = scrapDialog
+  local case = dialog and findCase(dialog.serial)
+  if not case or case.phase ~= "transit" then return nil end
+  local heat = heatStatus(case)
+  return {token = dialog.token, seconds = chopSeconds, heatLabel = heat.label, hot = heat.stage == "hot",
+    rate = math.floor(chopRates[heat.stage] * perk("fenceValue", 1) * 100 + 0.5)}
+end
+
+-- action: "accept", "decline", or "leave" (the screen closed). The car is checked again on accept, since the
+-- screen can stay open while the situation changes.
+function M.scrapInput(token, action)
+  local dialog = scrapDialog
+  if not dialog or dialog.token ~= token then return end
+  scrapDialog = nil
+  if action == "leave" then return end
+  extensions.ui_router.navigate("play")
+  if action ~= "accept" then return end
+  local case = findCase(dialog.serial)
+  local vehicle = liveId and getObjectByID(liveId)
+  if not case or case.phase ~= "transit" or not vehicle then return end
+  local pursuit = overhaul_integration_services_police.getPursuitData(liveId)
+  if pursuit and (pursuit.mode or 0) ~= 0 then
+    notify("Lose the police before selling the car for parts.")
+  elseif not ownedGarageNear(vehicle) then
+    notify("Drive into a garage you own.")
+  elseif vehicle:getVelocity():length() > 1 then
+    notify("Stop the vehicle before selling it for parts.")
+  elseif inventory().hasFreeSlot() then
+    notify("A garage slot is free now: store the car normally.")
+  else
+    scrapCarried(case)
+  end
 end
 
 -- Abandoning: walk away from a stolen car you have not stored. Beyond this distance, with no pursuit on
@@ -1758,12 +1908,13 @@ function M.getUndergroundState()
     local record = other.inventoryId and inventory().getVehicles()[other.inventoryId]
     local heat = heatStatus(other, now)
     table.insert(view.cases, {serial = other.serial, phase = other.phase,
-      name = record and record.niceName or "Stolen vehicle", selected = other == case, heatLabel = heat.label})
+      name = record and record.niceName or other.scrapName or "Stolen vehicle", selected = other == case, heatLabel = heat.label})
   end
   if not case then return view end
   local record = case.inventoryId and inventory().getVehicles()[case.inventoryId]
   local vehicle = {serial = case.serial, phase = case.phase, identity = case.identity, source = case.source,
     repainted = repainted(case)}
+  if not record and case.scrapName then vehicle.name = case.scrapName end
   if record then
     vehicle.name = record.niceName
     vehicle.thumbnail = inventory().getVehicleThumbnail and inventory().getVehicleThumbnail(case.inventoryId)
@@ -2334,12 +2485,14 @@ function M.onOverhaulBeforeSetProfile()
   negotiation, lastResult = nil, nil
   ignition, ignitionCooldown, starter = nil, 0, nil
   forcedStops, bypassMisses, parkedTicks = {}, {}, 0
+  scrapDialog = nil
   resetTrafficTopUp()
 end
 
 function M.onClientEndMission()
   attempted, liveId, ignition, starter = nil, nil, nil, nil
   forcedStops, bypassMisses, parkedTicks = {}, {}, 0
+  scrapDialog = nil
   resetTrafficTopUp()
   -- Vehicle ids do not survive a level change: an ongoing undercover chase starts over on the next drive.
   if state and state.sting then state.sting.pursuing = nil end

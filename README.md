@@ -1,6 +1,6 @@
 # RLS Vehicle Theft
 
-Version 0.9.0 adds undercover police buyers, makes heat matter on the street as well as at the sale, and fixes a set of gameplay inconsistencies in the vehicle theft feature for RLS Career Overhaul. Take a vehicle from the street or a dealership, store it in an owned garage, change its identity, and sell it to underground buyers from the **Underground** phone app. Police, vehicle damage, workshop costs, and fines can turn a sale into a loss.
+Version 0.9.4 keeps stolen cars from being lost when your garages are full, fixes parked cars failing mid-theft, and builds on 0.9.0's undercover police buyers and heat-aware street police in the vehicle theft feature for RLS Career Overhaul. Take a vehicle from the street or a dealership, store it in an owned garage, change its identity, and sell it to underground buyers from the **Underground** phone app. Police, vehicle damage, workshop costs, and fines can turn a sale into a loss.
 
 This is an unofficial add-on. It is not affiliated with RLS Modding or BeamNG GmbH.
 
@@ -67,7 +67,7 @@ Change the shortcut in **Underground phone app → Settings → Change binding**
 
 1. **Take a vehicle.** In RLS Career, walk up to the door of a parked or stopped civilian vehicle, press your configured shortcut (default **Ctrl + Shift + J**) and stay beside it for 4 seconds. You can also carjack a civilian car that is still driving below about 30 km/h: step next to it (within about 6 m) and press the shortcut. The driver brakes to a stop; stay next to the car for 2.5 seconds and it is yours. Walk away first and the car drives off again. The same shortcut works while inspecting a dealership vehicle or driving it during a dealership test drive.
 2. **Start the engine.** A stopped traffic vehicle already has its engine running, so you take it without the bypass. If the engine is off, select **Begin** on the **Ignition Bypass** screen. Press **Lock signal** (or **Space**) when the white marker is in the green zone. Match all three signals within 25 seconds. A miss costs 4 seconds; if the time runs out, wait 8 seconds before trying again. Canceling a started attempt (or closing the screen) counts the same way: the 8-second wait applies and the alarm your misses tripped stays tripped on the next try at that car. Vehicle Theft perks widen the target zone and shorten the miss penalty. If the engine starts but the parking brake is on, release it before driving.
-3. **Store it.** Lose any active pursuit and stop the vehicle inside a garage you own. It is stored after a few seconds standing still, when you get out, or when you press your configured shortcut. It uses a normal garage slot. A vehicle left at the entrance is not stored, because the garage computer only lists vehicles inside the garage. The XP and the theft milestones for taking the car are counted at this point.
+3. **Store it.** Lose any active pursuit and stop the vehicle inside a garage you own. It is stored after a few seconds standing still, when you get out, or when you press your configured shortcut. It uses a normal garage slot. If every slot is taken, press the shortcut while stopped inside the garage and a confirmation screen offers to have the crew take the car away and strip it for parts. It takes the same 90 seconds as the chop shop and is paid like it. The Underground app shows the countdown, the case counts toward your open cases, and the XP and theft milestones are paid when the crew finishes. A vehicle left at the entrance is not stored, because the garage computer only lists vehicles inside the garage. The XP and the theft milestones for taking the car are counted at this point.
 4. **Change its identity and repaint it.** At the garage computer, select the vehicle and choose **Change vehicle identity**. This also gives it a new plate. The work costs 23% of the car's value (at least $1,200) and takes 150 seconds; Vehicle Theft perks make it cheaper and faster. The Underground app counts down the remaining time. If you drive the car out of the garage before it is done, the work stops and the fee is refunded. Repaint it with the RLS painting option on the same computer: the theft report describes the colour it had when you stored it.
 5. **Sell it from the Underground phone app.** Install **Underground** from the phone's App Store once. When the identity change is done, open the app, set an asking price and choose **List for sale**. Buyers send offers over time; each offer expires after a few minutes, and up to four can wait at once. For each offer choose **Accept**, **Decline** or **Negotiate**. You can sell from anywhere, but buyers only meet a parked car: not while you are driving it and never while the police are chasing it. The vehicle is handed over and the money is paid at once.
 
@@ -149,6 +149,7 @@ Everything lives in this mod's ZIP; no RLS file is edited. BeamNG merges all mod
 | `gameplay/overhaul/phone/apps/rls-underground.json` | The Underground phone app definition |
 | `ui/ui-vue/mods/rls_vehicle_theft/UndergroundApp.vue` | The Underground app screen |
 | `ui/ui-vue/mods/rls_vehicle_theft/IgnitionBypass.vue` | The ignition bypass screen |
+| `ui/ui-vue/mods/rls_vehicle_theft/ScrapConfirm.vue` | The confirmation screen for stripping a car when no garage slot is free |
 | `ui/images/rls_vehicle_theft/underground.png` | The Underground app icon |
 | `gameplay/overhaul/ui/routes/rls-theft-routes.json` | The ignition screen's UI route |
 | `lua/ge/extensions/core/input/actions/rls_vehicle_theft.json`, `settings/inputmaps/keyboard_rls_vehicle_theft.json` | The take/store action and its default **Ctrl + Shift + J** binding |
@@ -172,6 +173,26 @@ The mod ships no automated tests. Theft, the ignition screen, storage, the ident
 This mod is released under the [MIT License](LICENSE). The license covers this mod's own files only. RLS Career Overhaul and BeamNG.drive are separate works under their own licenses and are not included.
 
 ## Changes
+
+### 0.9.4
+
+This release fixes two problems found in reviews and lets you sell a stolen car for parts when every garage slot is taken. Saves from 0.9.0 load without any action. Versions 0.9.1 to 0.9.3 were never published; their changes are included here.
+
+**Added**
+- **Strip for parts when no garage slot is free.** A second stolen car used to be lost when every slot in your garages was taken. Now, with the car stopped inside a garage you own, the shortcut opens a confirmation screen that offers to have a crew strip it for parts.
+  - The screen shows what the crew pays (the chop shop rate at the car's current heat), how long it takes (90 seconds) and the theft report status.
+  - Choose **Strip for parts** and the crew takes the car away; choose **Keep the car** (or press Esc) and nothing changes.
+  - The strip is an ordinary chop shop case: the Underground app shows the car and its countdown, it counts toward your open cases, it survives a reload and it pays like the chop shop. The car is gone from the road, so police, arrests and title checks can no longer touch it.
+  - The theft XP, the Car Thief, Clean Hands and Carjacker milestones, and the dealership investigation for a test-drive car are applied when the crew finishes.
+  - The car is checked again when you confirm: it must be stopped inside your garage with no police chase, and no slot may have become free in the meantime.
+- Taking a parked car now writes the reason to the game log when it cannot be completed (`beamng.log`, lines containing `rlsVehicleTheft`). Include those lines when reporting a problem.
+
+**Fixed**
+- A stolen car now leaves with its engine running. Cars taken from traffic or the street were swapped for their real model with the ignition off, and the engine was never started when the ignition bypass was skipped. The starter now runs for every street theft and only cranks when the engine is not already running.
+- Taking a parked car could stop with "no longer available" even though the car was still there. The ignition bypass now waits up to 1.5 seconds if RLS briefly deactivates or moves the car, instead of ending at once. If the parking pool cannot be found by name, the car is released from whichever pool holds it.
+
+**Upgrading from 0.9.0**
+- Remove `rls_vehicle_theft_0.9.0.zip` (or any older version) from your `mods` folder before adding 0.9.4. Saves load without any action.
 
 ### 0.9.0
 
