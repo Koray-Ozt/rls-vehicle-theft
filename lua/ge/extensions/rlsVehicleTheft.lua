@@ -710,9 +710,34 @@ local function trafficLog(event, level)
   log(level or "I", trafficTag, event .. " | " .. (ok and snapshot or ("snapshot failed: " .. tostring(snapshot))))
 end
 
+-- One-time hint: with little traffic there are few cars to take, so point to the traffic setting. The mod does
+-- not change the setting itself. Shown once per save, shortly after the replacement car joins the road.
+local lowTrafficStandard = 4
+local trafficHintDue = false
+
+local function standardTrafficCount()
+  local count = 0
+  for _, entry in pairs(gameplay_traffic.getTrafficData()) do
+    if entry.isAi and not entry.reserved and not entry.isTaxi and entry.role and entry.role.name == "standard" then
+      count = count + 1
+    end
+  end
+  return count
+end
+
+local function showTrafficHint()
+  trafficHintDue = false
+  if not state or state.trafficHint then return end
+  state.trafficHint = true
+  ui_message("There are few cars on the road, so few to take. You can raise the traffic amount in "
+    .. "Options > Gameplay > Traffic.", 10, "rlsVehicleTheftTraffic")
+  trafficLog("shown traffic setting hint")
+end
+
 local function resetTrafficTopUp()
   trafficOwed, trafficRespawnAt, trafficSpawnPending, trafficFailures = 0, 0, nil, 0
   stolenTraffic = {}
+  trafficHintDue = false
 end
 
 -- Variety: stock group creation weights models by popularity, so the same few cars keep coming up. The
@@ -839,6 +864,9 @@ local function releaseStreetCar(vehicle)
   else
     local wasTraffic = gameplay_traffic.getTrafficData()[id] ~= nil
     trafficLog("theft, before removing traffic car " .. id)
+    if wasTraffic and not state.trafficHint and standardTrafficCount() <= lowTrafficStandard then
+      trafficHintDue = true
+    end
     stolenTraffic[id] = true
     gameplay_traffic.removeTraffic(id)
     if wasTraffic then trafficOwed = math.min(trafficMaxOwed, trafficOwed + 1) end
@@ -2243,6 +2271,7 @@ function M.onTrafficVehicleAdded(id)
   if trafficSpawnPending then
     trafficSpawnPending = nil
     trafficLog("replacement car " .. tostring(id) .. " joined traffic")
+    if trafficHintDue then showTrafficHint() end
   end
 end
 
