@@ -188,6 +188,7 @@ This release fixes two problems found in reviews and lets you sell a stolen car 
 - Taking a parked car now writes the reason to the game log when it cannot be completed (`beamng.log`, lines containing `rlsVehicleTheft`). Include those lines when reporting a problem.
 
 **Fixed**
+- Carjacking a moving civilian car could leave you without control of it. The car's AI is now switched off again once you are seated, so the car responds to steering, throttle and brakes.
 - A stolen car now leaves with its engine running. Cars taken from traffic or the street were swapped for their real model with the ignition off, and the engine was never started when the ignition bypass was skipped. The starter now runs for every street theft and only cranks when the engine is not already running.
 - Taking a parked car could stop with "no longer available" even though the car was still there. The ignition bypass now waits up to 1.5 seconds if RLS briefly deactivates or moves the car, instead of ending at once. If the parking pool cannot be found by name, the car is released from whichever pool holds it.
 
