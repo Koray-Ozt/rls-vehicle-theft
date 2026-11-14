@@ -522,7 +522,22 @@ local function bindRls()
         notify("Camera fine sent to the vehicle's registered owner.")
         return true
       end
-      return original(price, reason, ...)
+      local result = original(price, reason, ...)
+      -- RLS charges a repaint with tags {"vehiclePainting"} and finance.vehicleId = the inventory id.
+      -- A successful charge on a stolen car is recorded as that car's repaint expense.
+      local paint = result and type(reason) == "table" and type(reason.tags) == "table" and reason.finance
+      if paint and paint.vehicleId and load() then
+        local isPainting = false
+        for _, tag in ipairs(reason.tags) do if tag == "vehiclePainting" then isPainting = true end end
+        local case = isPainting and vehicleCase(paint.vehicleId)
+        local amount = case and type(price) == "table" and price.money and tonumber(price.money.amount)
+        if amount and amount > 0 then
+          case.expenses = case.expenses or {}
+          case.expenses.paint = (tonumber(case.expenses.paint) or 0) + amount
+          save()
+        end
+      end
+      return result
     end
   end)
   bind(overhaul_career_progression_skillsPage, "getLandingPageData", decorateSkillsPage)
@@ -1830,14 +1845,15 @@ local function springSting(case)
   return "sting"
 end
 
--- Expenses recorded for this car and whether the total is incomplete. Only the identity fee is tracked
--- (RLS repaint costs are not reported to the mod), so a repainted car or a car whose identity was changed
--- before this expense tracking existed is flagged as partial instead of showing a falsely precise figure. Police fines are not
--- trade expenses and are left out.
+-- Expenses recorded for this car (identity fee and RLS repaint charges) and whether the total is
+-- incomplete: a car whose identity was changed, or that was repainted, before this tracking existed has
+-- no record, so it is flagged as partial instead of showing a falsely precise figure. Police fines are
+-- not trade expenses and are left out.
 local function expensesFor(case)
-  local identity = case.expenses and tonumber(case.expenses.identity)
-  local partial = repainted(case) == true or (case.identity ~= nil and identity == nil)
-  return identity or 0, partial
+  local spent = case.expenses or {}
+  local identity, paint = tonumber(spent.identity), tonumber(spent.paint)
+  local partial = (case.identity ~= nil and identity == nil) or (repainted(case) == true and paint == nil)
+  return (identity or 0) + (paint or 0), partial, identity or 0, paint or 0
 end
 
 -- Hands the car over at the agreed price. Returns "sold", "raided", "sting" or nil when it cannot happen now.
@@ -1944,7 +1960,7 @@ function M.getUndergroundState()
     vehicle.hot = heat.stage == "hot"
     vehicle.handoverBlocked = handoverBlocked(case)
   end
-  vehicle.expenses, vehicle.expensesPartial = expensesFor(case)
+  vehicle.expenses, vehicle.expensesPartial, vehicle.expensesIdentity, vehicle.expensesPaint = expensesFor(case)
   if case.listing then
     vehicle.listedPrice = case.listing.price
     vehicle.nextOfferIn = case.listing.nextOfferAt and math.max(0, case.listing.nextOfferAt - now) or nil

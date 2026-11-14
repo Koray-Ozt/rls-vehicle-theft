@@ -178,7 +178,7 @@ This mod is released under the [MIT License](LICENSE). The license covers this m
 
 **Added**
 - **Estimated net profit in the Underground app.** The asking price, each buyer offer and the sold result now show the net after the car's recorded expenses, as profit, loss or break-even (worded, not only colored).
-  - Only the identity change fee is tracked per car, and it is taken back out if the workshop refunds it. Repaint costs are not reported to the mod, so a repainted car is labeled "partial costs". Police fines are not counted.
+  - Tracked per car: the identity change fee (taken back out if the workshop refunds it) and RLS repaint charges. Cars changed or repainted before this tracking existed are labeled "partial costs". Police fines are not counted.
 
 ### 0.9.4
 

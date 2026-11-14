@@ -363,9 +363,12 @@ const netText = (value, spent) => {
 }
 const netTone = (value, spent) => { const n = net(value, spent); return n > 0 ? "profit" : n < 0 ? "loss" : "even" }
 const expenseNote = computed(() => {
-  const spent = Number(vehicle.value?.expenses) || 0
-  const base = spent > 0 ? `After ${money(spent)} identity change.` : "No recorded expenses yet."
-  return vehicle.value?.expensesPartial ? `${base} Repaint costs are not included.` : base
+  const v = vehicle.value
+  const parts = []
+  if (Number(v?.expensesIdentity) > 0) parts.push(`${money(v.expensesIdentity)} identity change`)
+  if (Number(v?.expensesPaint) > 0) parts.push(`${money(v.expensesPaint)} repaint`)
+  const base = parts.length ? `After ${parts.join(" and ")}.` : "No recorded expenses yet."
+  return v?.expensesPartial ? `${base} Some earlier costs were not recorded.` : base
 })
 
 const stingText = "The deal is off and the car's new plate is burned. Lose the police: if they catch you, the car is seized and the theft fine is charged. To sell it again, change its identity and repaint it once more."
