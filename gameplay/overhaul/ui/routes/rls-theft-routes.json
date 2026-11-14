@@ -9,6 +9,14 @@
       "parent": "overhaul",
       "backTarget": "play",
       "title": "Ignition bypass"
+    },
+    {
+      "name": "rls-theft-scrap",
+      "path": "vehicle-theft/scrap",
+      "component": "/ui/ui-vue/mods/rls_vehicle_theft/ScrapConfirm.vue",
+      "parent": "overhaul",
+      "backTarget": "play",
+      "title": "Sell for parts"
     }
   ]
 }
