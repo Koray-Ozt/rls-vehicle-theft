@@ -35,7 +35,7 @@ To build the ZIP yourself, compress the folders `gameplay`, `lua`, `scripts`, `s
 | Key | When | What it does |
 |---|---|---|
 | **Default: Ctrl + Shift + J** | On foot, at the door of a parked civilian car | Start taking it. Stay beside the car for 4 seconds. |
-| **Default: Ctrl + Shift + J** | On foot, next to a civilian car driving below about 30 km/h | Flag it down. The driver stops; stay next to the car for 2.5 seconds. |
+| **Default: Ctrl + Shift + J** | On foot, next to a civilian car or an idle taxi driving below about 30 km/h | Flag it down. The driver stops; stay next to the car for 2.5 seconds. |
 | **Default: Ctrl + Shift + J** | Inspecting a dealership car, or driving it on a test drive | Take that car. |
 | **Default: Ctrl + Shift + J** | Driving the stolen car, parked inside a garage you own | Store it. Getting out inside the garage stores it too. |
 | **Space** or **Enter** | Ignition Bypass screen | **Begin**, then **Lock signal** when the white marker is in the green zone. The buttons work with the mouse as well. |
@@ -65,7 +65,7 @@ Change the shortcut in **Underground phone app → Settings → Change binding**
 
 ## Playing
 
-1. **Take a vehicle.** In RLS Career, walk up to the door of a parked or stopped civilian vehicle, press your configured shortcut (default **Ctrl + Shift + J**) and stay beside it for 4 seconds. You can also carjack a civilian car that is still driving below about 30 km/h: step next to it (within about 6 m) and press the shortcut. The driver brakes to a stop; stay next to the car for 2.5 seconds and it is yours. Walk away first and the car drives off again. The same shortcut works while inspecting a dealership vehicle or driving it during a dealership test drive.
+1. **Take a vehicle.** In RLS Career, walk up to the door of a parked or stopped civilian vehicle, press your configured shortcut (default **Ctrl + Shift + J**) and stay beside it for 4 seconds. You can also carjack a civilian car that is still driving below about 30 km/h: step next to it (within about 6 m) and press the shortcut. The driver brakes to a stop; stay next to the car for 2.5 seconds and it is yours. Walk away first and the car drives off again. Taxis can be taken the same way while they are idle (available or off duty), but not one that is coming for you, waiting for you or driving you: the driver's cash comes with it (see Consequences). The same shortcut works while inspecting a dealership vehicle or driving it during a dealership test drive.
 2. **Start the engine.** A stopped traffic vehicle already has its engine running, so you take it without the bypass. If the engine is off, select **Begin** on the **Ignition Bypass** screen. Press **Lock signal** (or **Space**) when the white marker is in the green zone. Match all three signals within 25 seconds. A miss costs 4 seconds; if the time runs out, wait 8 seconds before trying again. Canceling a started attempt (or closing the screen) counts the same way: the 8-second wait applies and the alarm your misses tripped stays tripped on the next try at that car. Vehicle Theft perks widen the target zone and shorten the miss penalty. If the engine starts but the parking brake is on, release it before driving.
 3. **Store it.** Lose any active pursuit and stop the vehicle inside a garage you own. It is stored after a few seconds standing still, when you get out, or when you press your configured shortcut. It uses a normal garage slot. If every slot is taken, press the shortcut while stopped inside the garage and a confirmation screen offers to have the crew take the car away and strip it for parts. It takes the same 90 seconds as the chop shop and is paid like it. The Underground app shows the countdown, the case counts toward your open cases, and the XP and theft milestones are paid when the crew finishes. A vehicle left at the entrance is not stored, because the garage computer only lists vehicles inside the garage. The XP and the theft milestones for taking the car are counted at this point.
 4. **Change its identity and repaint it.** At the garage computer, select the vehicle and choose **Change vehicle identity**. This also gives it a new plate. The work costs 23% of the car's value (at least $1,200) and takes 150 seconds; Vehicle Theft perks make it cheaper and faster. The Underground app counts down the remaining time. If you drive the car out of the garage before it is done, the work stops and the fee is refunded. Repaint it with the RLS painting option on the same computer: the theft report describes the colour it had when you stored it.
@@ -126,6 +126,7 @@ Theft milestones appear with RLS's general milestones and pay money when claimed
 ## Consequences
 
 - **Taking a traffic vehicle from its driver** is reported at once, and the nearest police unit starts a pursuit right away, even if it has not seen you yet.
+- **Taking a taxi** pays the driver's cash at once, $60–$240 in steps of $5, and you keep it whatever becomes of the car. A taxi is a commercial vehicle: the pursuit starts at RLS wanted level 3 (every unit, roadblocks) instead of 1, and so does every later pursuit of that car, whether a patrol spots it or recognizes its paint.
 - **Taking a parked vehicle** goes unnoticed for 90–180 seconds if you match every signal cleanly. Each missed signal trips the alarm and shortens that time. Two or more nearby traffic vehicles act as witnesses and shorten it further.
 - Once a vehicle is reported, a patrol that spots it starts an RLS pursuit and refreshes its hot period. How close the patrol has to be depends on heat: about 160 m while Hot, 100 m while Warm and 60 m once Cold. After you evade a pursuit, patrols ignore the vehicle for 45 seconds.
 - A new identity hides the plate, not the paint. If the vehicle still has the colour it had when you stored it, each new patrol that sees you driving it (within the same heat-based range) has a 30% chance to recognize it and start a pursuit, half that once the report is Cold. The underground handover has a 20% chance to be raided, which seizes the vehicle and charges the theft fine. The Underground app marks such a vehicle as risky and shows the current raid chance.
@@ -144,7 +145,9 @@ Everything lives in this mod's ZIP; no RLS file is edited. BeamNG merges all mod
 
 | File in the ZIP | Purpose |
 |---|---|
-| `lua/ge/extensions/rlsVehicleTheft.lua` | All logic: theft, ignition, storage, identity change, police, underground market, XP, perks and milestones |
+| `lua/ge/extensions/rlsVehicleTheft.lua` | The extension itself: puts the parts below together and runs their updates |
+| `lua/ge/extensions/rlsVehicleTheft/config.lua` | Every gameplay tunable in one place: fines, heat, sight ranges, chop rates, offer pace, taxi cash, perk tiers |
+| `lua/ge/extensions/rlsVehicleTheft/*.lua` | The logic, one part per file: `core` (clock, messages, saved data), `progression` (XP, perks, milestones), `cases`, `rlsHooks` (wrapped RLS functions), `streetCars`, `traffic`, `ignition`, `theft`, `garage`, `workshop` (identity change, chop shop), `police`, `market`, `negotiation` and `undergroundApp` |
 | `gameplay/overhaul/domains/careerSkills/skills/vehicleTheft/info.json` | The Vehicle Theft skill: 50 levels and their perk cards |
 | `gameplay/overhaul/phone/apps/rls-underground.json` | The Underground phone app definition |
 | `ui/ui-vue/mods/rls_vehicle_theft/UndergroundApp.vue` | The Underground app screen |
@@ -177,6 +180,17 @@ This mod is released under the [MIT License](LICENSE). The license covers this m
 ### Unreleased
 
 **Added**
+- **Taxi theft.** Idle RLS taxis can now be taken from their drivers like any civilian car in traffic. A cab working a ride for you (on its way, waiting or driving you) is left alone.
+  - The driver's cash comes with it: $60–$240, paid at once.
+  - A stolen taxi is a commercial vehicle, so its pursuits start at RLS wanted level 3 instead of 1, through RLS's own pursuit levels.
+- **Phone notifications for finished workshop jobs.** When the crew finishes stripping a car for parts, or the workshop finishes an identity change, the Underground app sends a phone notification with the car's name (and the payment for parts). They use their own **Workshop** channel, which can be muted in the phone's notification settings apart from buyer offers.
+
+**Changed**
+- The taxi theft message is split in two: the driver's cash on its own short line, then the wanted level and what to do next.
+- The code is split from one 2,600-line file into a small extension file and 15 parts under `lua/ge/extensions/rlsVehicleTheft/`, built the way RLS builds its taxi service. All gameplay tunables are in `config.lua`. Behaviour is unchanged.
+
+**Fixed**
+- Taking a car from its driver (a taxi or any car in traffic) no longer shows a second "reported stolen" message a second later. It replaced the theft message before it could be read, so the taxi's police warning was barely visible.
 - **Estimated net profit in the Underground app.** The asking price, each buyer offer and the sold result now show the net after the car's recorded expenses, as profit, loss or break-even (worded, not only colored).
   - Tracked per car: the identity change fee (taken back out if the workshop refunds it) and RLS repaint charges. Cars changed or repainted before this tracking existed are labeled "partial costs". Police fines are not counted.
 

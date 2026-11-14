@@ -18,6 +18,13 @@
       "default": true,
       "description": "Underground buyer offers on your listed vehicle",
       "order": 0
+    },
+    {
+      "key": "rlsUnderground.workshop",
+      "label": "Workshop",
+      "default": true,
+      "description": "A car stripped for parts or given a new identity is done",
+      "order": 1
     }
   ],
   "notificationSources": [
