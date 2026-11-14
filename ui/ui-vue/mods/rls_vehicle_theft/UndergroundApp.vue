@@ -99,7 +99,7 @@
             <strong v-if="state.result.kind === 'sold'">Sold for {{ money(state.result.price) }}</strong>
             <strong v-else-if="state.result.kind === 'sting'">The buyer was an undercover cop</strong>
             <strong v-else>Police raided the handover</strong>
-            <span v-if="state.result.kind === 'sold'">The money is in your account.</span>
+            <span v-if="state.result.kind === 'sold'">The money is in your account. <span :class="['ug-net', netTone(state.result.price, state.result.expenses)]">Net {{ netText(state.result.price, state.result.expenses) }}{{ state.result.partial ? " · partial costs" : "" }}</span></span>
             <span v-else-if="state.result.kind === 'sting'">{{ stingText }}</span>
             <span v-else>The vehicle was seized and the theft fine was charged.</span>
             <button class="ug-link" @click="call('undergroundDismissResult()')">Dismiss</button>
@@ -157,6 +157,10 @@
                   <button @click="nudge(500)">+</button>
                 </div>
                 <p class="ug-hint">{{ priceHint }}</p>
+                <p v-if="price > 0" class="ug-net-row" :class="netTone(price, vehicle.expenses)">
+                  Est. net after expenses: <strong>{{ netText(price, vehicle.expenses) }}</strong><span v-if="vehicle.expensesPartial"> · partial costs</span>
+                  <span class="ug-net-sub">{{ expenseNote }}</span>
+                </p>
                 <div class="ug-actions">
                   <button class="ug-btn ghost" @click="setPrice(vehicle.suggestedPrice)">Suggested</button>
                   <button class="ug-btn primary" :disabled="!(price > 0)" @click="call(`undergroundList(${price})`)">List for sale</button>
@@ -171,6 +175,11 @@
               <section class="ug-panel">
                 <div class="ug-row"><span>Listed at</span><strong>{{ money(vehicle.listedPrice) }}</strong></div>
                 <div class="ug-row"><span>Underground value</span><span>{{ money(vehicle.marketValue) }}</span></div>
+                <div class="ug-row" :class="netTone(vehicle.listedPrice, vehicle.expenses)">
+                  <span>Est. net at this price<span v-if="vehicle.expensesPartial"> (partial costs)</span></span>
+                  <strong>{{ netText(vehicle.listedPrice, vehicle.expenses) }}</strong>
+                </div>
+                <p class="ug-net-sub">{{ expenseNote }}</p>
                 <div class="ug-actions">
                   <button class="ug-btn ghost" @click="editingPrice = !editingPrice">{{ editingPrice ? "Close" : "Change price" }}</button>
                   <button class="ug-btn ghost danger" @click="call('undergroundUnlist()')">Remove listing</button>
@@ -202,6 +211,7 @@
                   </div>
                   <div class="ug-offer-value">
                     <strong>{{ money(offer.value) }}</strong>
+                    <span class="ug-net" :class="netTone(offer.value, vehicle.expenses)">Net {{ netText(offer.value, vehicle.expenses) }}</span>
                     <span :class="{ urgent: offer.expiresIn <= 30 }">{{ clock(offer.expiresIn) }}</span>
                   </div>
                 </div>
@@ -342,12 +352,34 @@ const priceHint = computed(() => {
   return "Around value: offers arrive at a normal pace."
 })
 
+// Estimated net = sale price minus the expenses recorded for this car (identity change). Shown with a word
+// as well as a sign so profit, loss and break-even never rely on colour alone.
+const net = (value, spent) => Math.round(Number(value) || 0) - Math.round(Number(spent) || 0)
+const netText = (value, spent) => {
+  const n = net(value, spent)
+  if (n > 0) return `+${money(n)} profit`
+  if (n < 0) return `−${money(-n)} loss`
+  return `${money(0)} break-even`
+}
+const netTone = (value, spent) => { const n = net(value, spent); return n > 0 ? "profit" : n < 0 ? "loss" : "even" }
+const expenseNote = computed(() => {
+  const v = vehicle.value
+  const parts = []
+  if (Number(v?.expensesIdentity) > 0) parts.push(`${money(v.expensesIdentity)} identity change`)
+  if (Number(v?.expensesPaint) > 0) parts.push(`${money(v.expensesPaint)} repaint`)
+  const base = parts.length ? `After ${parts.join(" and ")}.` : "No recorded expenses yet."
+  return v?.expensesPartial ? `${base} Some earlier costs were not recorded.` : base
+})
+
 const stingText = "The deal is off and the car's new plate is burned. Lose the police: if they catch you, the car is seized and the theft fine is charged. To sell it again, change its identity and repaint it once more."
 
 const resolved = computed(() => {
   const n = negotiation.value
   const result = n?.result
-  if (result?.kind === "sold") return { title: `Sold for ${money(result.price)}`, text: "The money is in your account.", tone: "ok" }
+  if (result?.kind === "sold") {
+    const partial = result.partial ? " (partial costs)" : ""
+    return { title: `Sold for ${money(result.price)}`, text: `The money is in your account. Net ${netText(result.price, result.expenses)}${partial}.`, tone: "ok" }
+  }
   if (result?.kind === "sting") return { title: "Undercover cop", text: stingText, tone: "bad" }
   if (result?.kind === "raided") return { title: "Police raid", text: "The buyer's contact recognized the paint. The vehicle was seized and the theft fine was charged.", tone: "bad" }
   if (n?.status === "failed") return { title: "No deal", text: "The buyer lost patience and walked away.", tone: "bad" }
@@ -596,6 +628,12 @@ onUnmounted(() => {
 
 .ug-label { display: block; margin: 0.6rem 0 0.3rem; color: var(--ug-muted); font-size: 0.75rem; }
 
+.ug-net, .ug-net-row, .ug-net-sub { font-size: 12px; opacity: 0.85; }
+.ug-net { display: block; }
+.ug-net-row { margin: 6px 0 0; }
+.ug-net-sub { display: block; opacity: 0.65; margin-top: 2px; }
+.profit { color: var(--ug-good, #5fd38d); }
+.loss { color: var(--ug-bad, #ff6b6b); }
 .ug-price {
   display: flex;
   gap: 0.35rem;

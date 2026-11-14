@@ -174,6 +174,12 @@ This mod is released under the [MIT License](LICENSE). The license covers this m
 
 ## Changes
 
+### Unreleased
+
+**Added**
+- **Estimated net profit in the Underground app.** The asking price, each buyer offer and the sold result now show the net after the car's recorded expenses, as profit, loss or break-even (worded, not only colored).
+  - Tracked per car: the identity change fee (taken back out if the workshop refunds it) and RLS repaint charges. Cars changed or repainted before this tracking existed are labeled "partial costs". Police fines are not counted.
+
 ### 0.9.4
 
 This release fixes two problems found in reviews and lets you sell a stolen car for parts when every garage slot is taken. Saves from 0.9.0 load without any action. Versions 0.9.1 to 0.9.3 were never published; their changes are included here.

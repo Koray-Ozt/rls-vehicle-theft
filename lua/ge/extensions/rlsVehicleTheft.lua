@@ -522,7 +522,22 @@ local function bindRls()
         notify("Camera fine sent to the vehicle's registered owner.")
         return true
       end
-      return original(price, reason, ...)
+      local result = original(price, reason, ...)
+      -- RLS charges a repaint with tags {"vehiclePainting"} and finance.vehicleId = the inventory id.
+      -- A successful charge on a stolen car is recorded as that car's repaint expense.
+      local paint = result and type(reason) == "table" and type(reason.tags) == "table" and reason.finance
+      if paint and paint.vehicleId and load() then
+        local isPainting = false
+        for _, tag in ipairs(reason.tags) do if tag == "vehiclePainting" then isPainting = true end end
+        local case = isPainting and vehicleCase(paint.vehicleId)
+        local amount = case and type(price) == "table" and price.money and tonumber(price.money.amount)
+        if amount and amount > 0 then
+          case.expenses = case.expenses or {}
+          case.expenses.paint = (tonumber(case.expenses.paint) or 0) + amount
+          save()
+        end
+      end
+      return result
     end
   end)
   bind(overhaul_career_progression_skillsPage, "getLandingPageData", decorateSkillsPage)
@@ -1478,6 +1493,9 @@ local function startIdentity(case)
   local seconds = perk("identityTime", 150)
   -- The fee is refunded if the car is driven out of the garage before the work is done.
   case.phase, case.readyAt, case.identityFee = "workshop", gameTime() + seconds, fee
+  -- Recorded per car for the profit estimate in the Underground app; refunded work is taken back out.
+  case.expenses = case.expenses or {}
+  case.expenses.identity = (tonumber(case.expenses.identity) or 0) + fee
   save()
   notify(string.format("Identity change started. Cost: %s. Ready in %d seconds.", money(fee), seconds))
 end
@@ -1827,6 +1845,17 @@ local function springSting(case)
   return "sting"
 end
 
+-- Expenses recorded for this car (identity fee and RLS repaint charges) and whether the total is
+-- incomplete: a car whose identity was changed, or that was repainted, before this tracking existed has
+-- no record, so it is flagged as partial instead of showing a falsely precise figure. Police fines are
+-- not trade expenses and are left out.
+local function expensesFor(case)
+  local spent = case.expenses or {}
+  local identity, paint = tonumber(spent.identity), tonumber(spent.paint)
+  local partial = (case.identity ~= nil and identity == nil) or (repainted(case) == true and paint == nil)
+  return (identity or 0) + (paint or 0), partial, identity or 0, paint or 0
+end
+
 -- Hands the car over at the agreed price. Returns "sold", "raided", "sting" or nil when it cannot happen now.
 -- undercover: the buyer was an undercover cop, so the handover springs the sting instead.
 local function completeUndergroundSale(case, price, negotiated, undercover)
@@ -1848,6 +1877,7 @@ local function completeUndergroundSale(case, price, negotiated, undercover)
     notify("The vehicle cannot be handed over right now.")
     return
   end
+  local expenses, partial = expensesFor(case)
   openInvestigation(case)
   removeCase(case)
   overhaul_career_economy_payment.reward({money = {amount = price}},
@@ -1857,7 +1887,7 @@ local function completeUndergroundSale(case, price, negotiated, undercover)
   count("sold")
   count("revenue", price)
   grantXp(15 + math.min(45, math.floor(price / 400)) + (negotiated and 5 or 0), "Underground vehicle sale")
-  lastResult = {kind = "sold", price = price}
+  lastResult = {kind = "sold", price = price, expenses = expenses, partial = partial}
   return "sold"
 end
 
@@ -1930,6 +1960,7 @@ function M.getUndergroundState()
     vehicle.hot = heat.stage == "hot"
     vehicle.handoverBlocked = handoverBlocked(case)
   end
+  vehicle.expenses, vehicle.expensesPartial, vehicle.expensesIdentity, vehicle.expensesPaint = expensesFor(case)
   if case.listing then
     vehicle.listedPrice = case.listing.price
     vehicle.nextOfferIn = case.listing.nextOfferAt and math.max(0, case.listing.nextOfferAt - now) or nil
@@ -2058,7 +2089,9 @@ local function settleNegotiationSale(n, price)
   local case = findCase(n.serial)
   local opening = n.history[2] and n.history[2].theirOffer or price
   local outcome = case and completeUndergroundSale(case, price, price > opening, n.undercover)
-  n.result = outcome and {kind = outcome, price = price} or {kind = "failed"}
+  n.result = outcome and {kind = outcome, price = price,
+    expenses = outcome == "sold" and lastResult and lastResult.expenses or nil,
+    partial = outcome == "sold" and lastResult and lastResult.partial or nil} or {kind = "failed"}
 end
 
 function M.undergroundCounter(price)
@@ -2236,6 +2269,9 @@ local function updateCase(case, now)
     -- Same rule as the chop shop: the work stops when the car leaves. The workshop returns the fee.
     local refund = tonumber(case.identityFee) or 0
     case.phase, case.readyAt, case.identityFee = "stored", nil, nil
+    if case.expenses and case.expenses.identity then
+      case.expenses.identity = math.max(0, case.expenses.identity - refund)
+    end
     if refund > 0 then
       overhaul_career_economy_payment.reward({money = {amount = refund}},
         {label = "Vehicle identity change refund", category = "service", tags = {"vehicleTheft"}}, true)
