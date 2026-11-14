@@ -1446,6 +1446,9 @@ local function updateAttempt(dt)
     end
     local id = vehicle:getID()
     enterAsDriver(vehicle)
+    -- A carjacked car may still be rolling when the player takes the wheel. Switch the AI off again now that
+    -- the player is seated, so no leftover AI mode or parking brake keeps the player from steering it (#10).
+    if fromTraffic then vehicle:queueLuaCommand('ai.setMode("disabled")') end
     if not gameplay_traffic.getTrafficData()[id] then gameplay_traffic.insertTraffic(id, true, true) end
     local clean = not result.skipped and result.misses == 0
     begin(vehicle, "street", nil, 0, delay, nil, result.skipped, {
