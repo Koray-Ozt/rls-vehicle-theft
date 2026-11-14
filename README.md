@@ -147,6 +147,7 @@ Everything lives in this mod's ZIP; no RLS file is edited. BeamNG merges all mod
 |---|---|
 | `lua/ge/extensions/rlsVehicleTheft.lua` | The extension itself: puts the parts below together and runs their updates |
 | `lua/ge/extensions/rlsVehicleTheft/config.lua` | Every gameplay tunable in one place: fines, heat, sight ranges, chop rates, offer pace, taxi cash, perk tiers |
+| `lua/ge/extensions/rlsVehicleTheft/propConfigs.lua` | The real model and configuration behind each simplified parked or traffic car |
 | `lua/ge/extensions/rlsVehicleTheft/*.lua` | The logic, one part per file: `core` (clock, messages, saved data), `progression` (XP, perks, milestones), `cases`, `rlsHooks` (wrapped RLS functions), `streetCars`, `traffic`, `ignition`, `theft`, `garage`, `workshop` (identity change, chop shop), `police`, `market`, `negotiation` and `undergroundApp` |
 | `gameplay/overhaul/domains/careerSkills/skills/vehicleTheft/info.json` | The Vehicle Theft skill: 50 levels and their perk cards |
 | `gameplay/overhaul/phone/apps/rls-underground.json` | The Underground phone app definition |
@@ -163,7 +164,7 @@ Where the mod changes RLS behaviour (blocking official sales of stolen cars, sus
 
 ## Current limits
 
-Parked cars in RLS are simplified props with no engine or drivetrain. When you take one, the mod replaces it with the real model of the same car, in the same place, paint and plate, using that model's default configuration. The Ardente and Tograc props have no real model in the base game, so they cannot be taken.
+Parked cars in RLS are simplified props with no engine or drivetrain. When you take one, the mod replaces it with the real car in the same place, paint and plate. The game does not link a prop to a real configuration, so the mod matches each prop to the closest one by hand (for example, a BX-Series LX Coupe becomes a 240BX Coupe LX). Props always have an automatic gearbox, so the automatic version is chosen where one exists. A prop the mod does not know, such as one added by another mod, becomes the model's default configuration. The Robot Van has no real model in the base game, so it cannot be taken.
 
 The number of cars you can take from traffic depends on BeamNG's own traffic setting (Options > Gameplay > Traffic). With a low setting the road holds only a few ordinary cars, and you will keep seeing the same ones. The mod replaces every car you take with a new one, but it does not change the setting. After a theft on a quiet road it shows a one-time hint about it.
 
@@ -190,6 +191,8 @@ This mod is released under the [MIT License](LICENSE). The license covers this m
 - The code is split from one 2,600-line file into a small extension file and 15 parts under `lua/ge/extensions/rlsVehicleTheft/`, built the way RLS builds its taxi service. All gameplay tunables are in `config.lua`. Behaviour is unchanged.
 
 **Fixed**
+- **A stolen parked car keeps its version.** A parked car (or a car in simplified traffic) used to turn into its model's default configuration when taken, so a BX-Series LX Coupe became a 200BX Type-L with a manual gearbox and every D-Series pickup a D15. It now becomes the matching real configuration: the same body, trim level and, where the game has one, an automatic gearbox.
+  - Cherrier Ardente and Tograc parked cars can now be taken too. They are versions of the Vivace model, and the mod used to look for a model of their own name.
 - Taking a car from its driver (a taxi or any car in traffic) no longer shows a second "reported stolen" message a second later. It replaced the theft message before it could be read, so the taxi's police warning was barely visible.
 - **Estimated net profit in the Underground app.** The asking price, each buyer offer and the sold result now show the net after the car's recorded expenses, as profit, loss or break-even (worded, not only colored).
   - Tracked per car: the identity change fee (taken back out if the workshop refunds it) and RLS repaint charges. Cars changed or repainted before this tracking existed are labeled "partial costs". Police fines are not counted.

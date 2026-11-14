@@ -5,34 +5,52 @@ return function(ctx)
   local config = ctx.config
   local carjackMaxSpeed, carjackReach =
     config.carjackMaxSpeed, config.carjackReach
+  local propConfigs = require("rlsVehicleTheft/propConfigs")
   -- From the other parts; bound by the function this file returns once every part is installed.
   local accessDistance, distance, inventory, parkedCars, perk, takeFromTraffic, walkingPlayer
 
   -- RLS parks "simple_traffic" props (Type PropParked): their configs have no engine, transmission or
   -- drivetrain, so they can never be started or driven. Simplified traffic uses the same model.
-  -- Stock traffic maps a simple_traffic config to its real model by the config key's first word
-  -- (bastion_base_parked -> bastion); a stolen prop is swapped for that real model.
-  -- Returns nil for a normal vehicle, the real model name for a prop, or false if no real model exists.
-  local realModels = {}
+  -- A stolen prop is swapped for the real car it shows: propConfigs.lua names the real model and
+  -- configuration of each prop config (bx_sport_coupe_parked -> bx/240bx_coupe_lx_A). A prop missing there
+  -- falls back to the rule stock traffic uses, the config key's first word as the model (bastion_base -> bastion),
+  -- with that model's default configuration.
+  -- Returns nil for a normal vehicle, false if no real model exists, or the real model name and the
+  -- configuration file to spawn it with (nil for the model's default).
+  local realCars = {}
   local function realModelFor(vehicle)
     if vehicle:getJBeamFilename() ~= "simple_traffic" then return nil end
     local _, key = path.splitWithoutExt(vehicle.partConfig or "")
-    local model = key and string.match(key, "%w+")
-    if not model then return false end
-    if realModels[model] == nil then
-      local models = core_vehicles.getModelList().models
-      realModels[model] = models[model] ~= nil
+    if not key then return false end
+    key = string.gsub(key, "_parked$", "")
+    local car = realCars[key]
+    if car == nil then
+      local model, config = string.match(propConfigs[key] or "", "^([^/]+)/(.+)$")
+      model = model or string.match(key, "%w+")
+      if model and core_vehicles.getModelList().models[model] then
+        local file = config and ("vehicles/" .. model .. "/" .. config .. ".pc")
+        if file and not FS:fileExists("/" .. file) then
+          log("W", "rlsVehicleTheft", "Prop " .. key .. ": " .. file .. " is missing, using the model's default configuration.")
+          file = nil
+        end
+        car = {model = model, config = file}
+      else
+        car = false
+      end
+      realCars[key] = car
     end
-    return realModels[model] and model or false
+    if not car then return false end
+    return car.model, car.config
   end
 
-  -- Deletes the prop and spawns its real model in the same place, paint and plate. Returns the new vehicle.
+  -- Deletes the prop and spawns the real car it shows in the same place, paint and plate. Returns the new vehicle.
   local function replaceProp(vehicle)
-    local model = realModelFor(vehicle)
+    local model, configFile = realModelFor(vehicle)
     if model == nil then return vehicle end
     if not model then return nil end
     local metallic = vehicle:getMetallicPaintData() or {}
     local options = {
+      config = configFile,
       pos = vehicle:getPosition(),
       rot = quatFromDir(vec3(vehicle:getDirectionVector()), vec3(vehicle:getDirectionVectorUp())),
       paint = createVehiclePaint(vehicle.color, metallic[1]),
