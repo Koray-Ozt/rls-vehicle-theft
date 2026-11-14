@@ -1,6 +1,6 @@
 # RLS Vehicle Theft
 
-Version 0.9.4 keeps stolen cars from being lost when your garages are full, fixes parked cars failing mid-theft, and builds on 0.9.0's undercover police buyers and heat-aware street police in the vehicle theft feature for RLS Career Overhaul. Take a vehicle from the street or a dealership, store it in an owned garage, change its identity, and sell it to underground buyers from the **Underground** phone app. Police, vehicle damage, workshop costs, and fines can turn a sale into a loss.
+Version 0.9.5 adds taxi theft, shows the estimated net profit of each sale in the Underground app, and keeps the version of a stolen parked car, building on 0.9.0's undercover police buyers and heat-aware street police in the vehicle theft feature for RLS Career Overhaul. Take a vehicle from the street or a dealership, store it in an owned garage, change its identity, and sell it to underground buyers from the **Underground** phone app. Police, vehicle damage, workshop costs, and fines can turn a sale into a loss.
 
 This is an unofficial add-on. It is not affiliated with RLS Modding or BeamNG GmbH.
 
@@ -178,13 +178,17 @@ This mod is released under the [MIT License](LICENSE). The license covers this m
 
 ## Changes
 
-### Unreleased
+### 0.9.5
+
+This release adds taxi theft, shows the estimated net profit of a sale in the Underground app, and keeps the version of a stolen parked car instead of turning it into the model's default configuration. Saves from 0.9.4 load without any action.
 
 **Added**
 - **Taxi theft.** Idle RLS taxis can now be taken from their drivers like any civilian car in traffic. A cab working a ride for you (on its way, waiting or driving you) is left alone.
   - The driver's cash comes with it: $60–$240, paid at once.
   - A stolen taxi is a commercial vehicle, so its pursuits start at RLS wanted level 3 instead of 1, through RLS's own pursuit levels.
 - **Phone notifications for finished workshop jobs.** When the crew finishes stripping a car for parts, or the workshop finishes an identity change, the Underground app sends a phone notification with the car's name (and the payment for parts). They use their own **Workshop** channel, which can be muted in the phone's notification settings apart from buyer offers.
+- **Estimated net profit in the Underground app.** The asking price, each buyer offer and the sold result now show the net after the car's recorded expenses, as profit, loss or break-even (worded, not only colored).
+  - Tracked per car: the identity change fee (taken back out if the workshop refunds it) and RLS repaint charges. Cars changed or repainted before this tracking existed are labeled "partial costs". Police fines are not counted.
 
 **Changed**
 - The taxi theft message is split in two: the driver's cash on its own short line, then the wanted level and what to do next.
@@ -194,8 +198,9 @@ This mod is released under the [MIT License](LICENSE). The license covers this m
 - **A stolen parked car keeps its version.** A parked car (or a car in simplified traffic) used to turn into its model's default configuration when taken, so a BX-Series LX Coupe became a 200BX Type-L with a manual gearbox and every D-Series pickup a D15. It now becomes the matching real configuration: the same body, trim level and, where the game has one, an automatic gearbox.
   - Cherrier Ardente and Tograc parked cars can now be taken too. They are versions of the Vivace model, and the mod used to look for a model of their own name.
 - Taking a car from its driver (a taxi or any car in traffic) no longer shows a second "reported stolen" message a second later. It replaced the theft message before it could be read, so the taxi's police warning was barely visible.
-- **Estimated net profit in the Underground app.** The asking price, each buyer offer and the sold result now show the net after the car's recorded expenses, as profit, loss or break-even (worded, not only colored).
-  - Tracked per car: the identity change fee (taken back out if the workshop refunds it) and RLS repaint charges. Cars changed or repainted before this tracking existed are labeled "partial costs". Police fines are not counted.
+
+**Upgrading from 0.9.4**
+- Remove `rls_vehicle_theft_0.9.4.zip` (or any older version) from your `mods` folder before adding 0.9.5. Saves load without any action.
 
 ### 0.9.4
 
