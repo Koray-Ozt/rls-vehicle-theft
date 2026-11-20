@@ -1,6 +1,6 @@
 # RLS Vehicle Theft
 
-Version 0.9.5 adds taxi theft, shows the estimated net profit of each sale in the Underground app, and keeps the version of a stolen parked car, building on 0.9.0's undercover police buyers and heat-aware street police in the vehicle theft feature for RLS Career Overhaul. Take a vehicle from the street or a dealership, store it in an owned garage, change its identity, and sell it to underground buyers from the **Underground** phone app. Police, vehicle damage, workshop costs, and fines can turn a sale into a loss.
+Version 0.9.6 fixes storing a stolen car in garages that have no doors (such as Dockside Garage) and works with RLS 2.8.1, building on 0.9.5's taxi theft and net profit display and 0.9.0's undercover police buyers and heat-aware street police in the vehicle theft feature for RLS Career Overhaul. Take a vehicle from the street or a dealership, store it in an owned garage, change its identity, and sell it to underground buyers from the **Underground** phone app. Police, vehicle damage, workshop costs, and fines can turn a sale into a loss.
 
 This is an unofficial add-on. It is not affiliated with RLS Modding or BeamNG GmbH.
 
@@ -10,8 +10,8 @@ This mod is an add-on for RLS Career Overhaul. It does **not** include RLS and d
 
 | Dependency | Version | Required | Notes |
 |---|---|---|---|
-| [BeamNG.drive](https://www.beamng.com/game/) | 0.40.5 | Yes | The version the mod was built and played on. |
-| [RLS Career Overhaul](https://github.com/RLS-Modding/rls_career_overhaul) | 2.8.0 Hotfix | Yes | Install and enable it separately. Other RLS versions are untested. |
+| [BeamNG.drive](https://www.beamng.com/game/) | 0.40.6 | Yes | The version the mod was last played on (0.9.5 and earlier: 0.40.5). |
+| [RLS Career Overhaul](https://github.com/RLS-Modding/rls_career_overhaul) | 2.8.1 | Yes | Install and enable it separately. 0.9.5 and earlier were played on 2.8.0 Hotfix. Other RLS versions are untested. |
 | An RLS career profile | — | Yes | Theft only works in an active RLS career, with at least one owned garage that has a free slot. |
 
 At runtime the mod calls RLS's career, garage, police, parking, marketplace, payment, skills and milestone systems. The Underground phone app also loads two files from inside RLS: the negotiation screen (`components/negotiation/NegotiationChatWindow.vue`) and the phone screen helper (`composables/usePhoneScreen.js`). An RLS update that renames or moves these may break the mod until it is updated.
@@ -20,7 +20,7 @@ The mod has no other dependencies and does not modify installed RLS or BeamNG ga
 
 ## Installation
 
-1. Install and enable **RLS Career Overhaul 2.8.0 Hotfix**.
+1. Install and enable **RLS Career Overhaul 2.8.1**.
 2. Download `rls_vehicle_theft_<version>.zip` from this repository's [Releases](../../releases) page. Do not unpack it.
 3. Put the ZIP in your BeamNG user folder under `mods` (for example `%LOCALAPPDATA%\BeamNG\BeamNG.drive\current\mods`).
 4. Remove any earlier `rls_vehicle_theft_*.zip` from that folder, enable the mod in the Mod Manager, and restart the game.
@@ -170,13 +170,29 @@ The number of cars you can take from traffic depends on BeamNG's own traffic set
 
 The mod handles 2 to 4 open cases at once (see Vehicle Theft level 10 and 25), but only one freshly stolen car can be carried at a time. Store the stolen vehicle before leaving the session. An unstored vehicle does not survive a reload, and the case can result in a fine when you return. Profiles saved with an earlier version are converted automatically; a case that was open keeps working.
 
-The mod ships no automated tests. Theft, the ignition screen, storage, the identity change and the Underground app have been played in BeamNG 0.40.5 with RLS 2.8.0. The Vehicle Theft skill, its perks, the theft milestones and the identity countdown fix in 0.7.0 have been checked only by reading the code against RLS, not yet in the game. The Underground app reuses RLS's negotiation component and phone screen helper, so a future RLS update that moves those files would break the app's negotiation screen.
+The mod ships no automated tests. Theft, the ignition screen and storing a car in a garage have been played in BeamNG 0.40.6 with RLS 2.8.1. The identity change and the Underground app were played with RLS 2.8.0 and have been checked against 2.8.1 only by reading the code. The Vehicle Theft skill, its perks, the theft milestones and the identity countdown fix in 0.7.0 have been checked only by reading the code against RLS, not yet in the game. The Underground app reuses RLS's negotiation component and phone screen helper, so a future RLS update that moves those files would break the app's negotiation screen.
 
 ## License
 
 This mod is released under the [MIT License](LICENSE). The license covers this mod's own files only. RLS Career Overhaul and BeamNG.drive are separate works under their own licenses and are not included.
 
 ## Changes
+
+### 0.9.6
+
+This release fixes a stolen car that could not be stored in some owned garages and moves the mod to RLS 2.8.1. Saves from 0.9.5 load without any action.
+
+**Fixed**
+- **A stolen car is stored in garages without doors.** Dockside Garage, the starting garage on some profiles, was never found "within reach" of a car parked right at its computer, so nothing happened and no message appeared. RLS places a garage without doors at the centre of its zone, at the terrain height; under a pier or platform that height is 0 while the garage is at 75, so the 3D distance to the car was about 75 m against a 35 m limit.
+  - The distance to a garage is now measured on the map, ignoring height.
+  - Every owned garage is checked, not only the one RLS reports as closest in 3D, which the same height error could also get wrong.
+
+**Changed**
+- The mod writes what it decides about storing a car to `beamng.log` (tag `rlsVehicleTheft`): the closest garage and its distance whenever that changes, each reason a car is not stored, and the result of a store. A refusal used to exist only as a seven-second message on screen.
+- RLS Career Overhaul 2.8.1 is now the supported version. Every RLS function the mod calls, the phone app and notification channels, the shipped Skills file and the negotiation screen were compared with 2.8.0 Hotfix and found compatible. Theft, the ignition screen and storing a car were played on 2.8.1; the identity change, the chop shop and the Underground app were checked only by reading the code.
+
+**Upgrading from 0.9.5**
+- Remove `rls_vehicle_theft_0.9.5.zip` (or any older version) from your `mods` folder before adding 0.9.6. Saves load without any action.
 
 ### 0.9.5
 
