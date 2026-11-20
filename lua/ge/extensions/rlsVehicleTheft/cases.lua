@@ -92,8 +92,14 @@ return function(ctx)
   local function paintStingChance() return math.min(0.9, perk("paintSting", 0.2) * heat()) end
   local function caseLimit() return perk("caseLimit", 2) end
 
-  local function seize(reason, case)
-    if not case then return false end
+  -- deferFine: an arrest that leads to custody, where the theft fine is set at sentencing (custody.lua). The
+  -- case keeps that mark, so a seizure RLS holds back until later charges nothing either. Returns the theft
+  -- fine when it was deferred.
+  local function seize(reason, case, deferFine)
+    if not case then return nil end
+    if deferFine then case.fineDeferred = true end
+    local amount = fineFor(case)
+    local deferred = case.fineDeferred and amount or nil
     local id = case.inventoryId
     if id and vehicleCase(id) then
       exitVehicle(inventory().getVehicleIdFromInventoryId(id))
@@ -101,7 +107,7 @@ return function(ctx)
         case.seizure = reason
         save()
         notify("Sale canceled. The vehicle is pending seizure.")
-        return false
+        return deferred
       end
     elseif case.phase == "transit" and session.liveId then
       local vehicle = getObjectByID(session.liveId)
@@ -110,12 +116,11 @@ return function(ctx)
         vehicle:delete()
       end
     end
-    local amount = fineFor(case)
-    charge(amount, reason, "fine", true)
+    if not deferred then charge(amount, reason, "fine", true) end
     removeCase(case)
     save()
-    notify(reason .. " Vehicle seized. Fine: " .. money(amount))
-    return false
+    notify(reason .. " Vehicle seized." .. (deferred and "" or (" Fine: " .. money(amount))))
+    return deferred
   end
 
   -- True once the stolen car has a new plate and a new colour: nothing links it to the theft report any more.

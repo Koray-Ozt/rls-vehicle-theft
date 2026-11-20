@@ -5,7 +5,7 @@ return function(ctx)
   local M = ctx.M
   local session = ctx.session
   -- From the other parts; bound by the function this file returns once every part is installed.
-  local buyerArchetypes, completeUndergroundSale, findCase, findOffer, gameTime, handoverBlocked, load, money,
+  local buyerArchetypes, completeUndergroundSale, findCase, findOffer, gameTime, handoverBlocked, inCustody, load, money,
     notify, publishUnderground, removeOffer, roundPrice, save, sellableCase, undergroundValue
 
   -- negotiationPolicy.sellingPatienceDrop for a private buyer: the further the ask is from the
@@ -27,7 +27,7 @@ return function(ctx)
   end
 
   function M.undergroundNegotiate(offerId)
-    if not load() then return end
+    if not load() or inCustody() then return end
     local case = sellableCase()
     local offer = findOffer(case, tonumber(offerId))
     if not offer or offer.expiresAt <= gameTime() then return end
@@ -55,6 +55,7 @@ return function(ctx)
 
   function M.undergroundCounter(price)
     local n = session.negotiation
+    if inCustody() then return end
     price = math.floor(tonumber(price) or 0)
     if not n or n.result or n.status == "thinking" or n.status == "typing" then return end
     if not (price > n.theirOffer and price <= n.myOffer) then return end
@@ -99,6 +100,7 @@ return function(ctx)
 
   function M.undergroundTakeOffer()
     local n = session.negotiation
+    if inCustody() then return end
     if not n or n.result or n.status == "failed" or n.status == "thinking" or n.status == "typing" then return end
     local blocked = handoverBlocked(findCase(n.serial))
     if blocked then
@@ -125,6 +127,7 @@ return function(ctx)
     findOffer = ctx.findOffer
     gameTime = ctx.gameTime
     handoverBlocked = ctx.handoverBlocked
+    inCustody = ctx.inCustody
     load = ctx.load
     money = ctx.money
     notify = ctx.notify

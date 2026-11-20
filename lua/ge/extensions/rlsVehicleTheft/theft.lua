@@ -67,6 +67,8 @@ return function(ctx)
     -- Global action bindings can fire while the phone UI has focus (notably mouse buttons).
     if session.appOpen then return end
     if not load() or not gameplay_traffic or not gameplay_walk or not overhaul_integration_services_police then return end
+    -- Nothing to take while the player is being booked (custody.lua).
+    if session.state.custody then return end
     bindRls()
     local player = walkingPlayer()
     if not player then return end

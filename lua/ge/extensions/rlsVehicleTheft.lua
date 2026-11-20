@@ -30,6 +30,7 @@ local parts = {
   "garage",         -- storing the car in an owned garage
   "workshop",       -- identity change and chop shop
   "police",         -- reports, patrols, undercover stings
+  "custody",        -- booking, sentencing and release after a theft arrest
   "market",         -- underground buyers, offers and sales
   "negotiation",    -- negotiating an offer
   "undergroundApp", -- the Underground phone app
@@ -79,6 +80,7 @@ function M.onUpdate(dtReal, dt)
     if session.state.cases[index] then updateCase(session.state.cases[index], now) end
   end
   ctx.updateSting(now)
+  ctx.updateCustody()
   ctx.updateTrafficTopUp(now)
 end
 
@@ -91,7 +93,7 @@ end
 function M.onOverhaulBeforeSetProfile()
   session.profile, session.state, session.attempted, session.liveId = nil, nil, nil, nil
   session.negotiation, session.lastResult = nil, nil
-  session.parkedTicks, session.scrapDialog = 0, nil
+  session.parkedTicks, session.scrapDialog, session.custodyJob, session.custodyView = 0, nil, nil, nil
   ctx.resetIgnition(true)
   ctx.resetForcedStops()
   ctx.resetTrafficTopUp()
@@ -100,6 +102,8 @@ end
 function M.onClientEndMission()
   session.attempted, session.liveId = nil, nil
   session.parkedTicks, session.scrapDialog = 0, nil
+  -- Custody cut short by the level change resumes on the new level (state.custody is saved).
+  session.custodyJob, session.custodyView = nil, nil
   ctx.resetIgnition(false)
   ctx.resetForcedStops()
   ctx.resetTrafficTopUp()
