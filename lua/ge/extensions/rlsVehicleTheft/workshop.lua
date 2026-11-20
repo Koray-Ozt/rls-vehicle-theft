@@ -8,7 +8,7 @@ return function(ctx)
   local chopRates, chopSeconds, scrapRoute, workshopChannel =
     config.chopRates, config.chopSeconds, config.scrapRoute, config.workshopChannel
   -- From the other parts; bound by the function this file returns once every part is installed.
-  local charge, count, currentValue, drivenOutOfGarage, exitVehicle, findCase, gameTime, grantXp, heatStatus,
+  local charge, count, currentValue, drivenOutOfGarage, exitVehicle, findCase, gameTime, grantXp, heatStatus, inCustody,
     inventory, load, money, notify, notifyPhone, openInvestigation, ownedGarageNear, perk, removeCase, repainted,
     save, underSting, vehicleCase
 
@@ -201,7 +201,7 @@ return function(ctx)
   end
 
   function M.onOverhaulComputerAddFunctions(menu, buttons)
-    if not load() then return end
+    if not load() or inCustody() then return end
     for _, case in ipairs(session.state.cases) do addComputerRow(case, buttons) end
   end
 
@@ -274,6 +274,7 @@ return function(ctx)
     gameTime = ctx.gameTime
     grantXp = ctx.grantXp
     heatStatus = ctx.heatStatus
+    inCustody = ctx.inCustody
     inventory = ctx.inventory
     load = ctx.load
     money = ctx.money

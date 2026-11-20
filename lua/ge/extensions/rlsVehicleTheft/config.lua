@@ -50,6 +50,54 @@ return {
   -- How long an undercover operation keeps looking for a seller who has not been chased yet (play time).
   stingSeconds = 600,
 
+  -- Custody after an arrest that confirms a theft (custody.lua): the black custody screen (route, Custody.vue)
+  -- fades in over fadeSeconds and shows BUSTED for at least holdSeconds while the player is booked, then the
+  -- sentencing choice, then serveSeconds of real time while the sentence passes. The player is released on foot
+  -- at the map's police station. A station is either a position (pos, and dir to face) or a parking spot in a
+  -- sites file of the map (sitesFile, spot); a map without one releases the player at the nearest garage.
+  custody = {
+    enabled = true,
+    fadeSeconds = 0.5,
+    holdSeconds = 2,
+    serveSeconds = 5,
+    route = "rls-theft-custody",
+    -- Sentence in game hours: the base for what was stolen (a taxi at least taxiHours), raised by priorFactor
+    -- for each earlier arrest within priorWindowSeconds of play time (at most maxPriors) and by evadeFactor
+    -- for each time the car got away from the police (at most maxEvades); a sting adds stingHours. Each other
+    -- stolen car the search finds adds extraCarFactor of its own base hours.
+    sentence = {
+      baseHours = {street = 6, inspection = 10, testDrive = 12},
+      taxiHours = 18,
+      stingHours = 4,
+      priorFactor = 0.25,
+      maxPriors = 4,
+      priorWindowSeconds = 10800,
+      evadeFactor = 0.10,
+      maxEvades = 3,
+      extraCarFactor = 0.5,
+      maxHours = 72,
+    },
+    -- What each lawyer does to the sentence (hours) and the theft fine (fine). A private lawyer charges a share
+    -- of the fine plus an hourly rate on the sentence, rounded to $50, at least feeMinimum, paid up front.
+    lawyers = {
+      public = {label = "Public defender", note = "Free. The court hands down the full sentence and fine.",
+        hours = 1, fine = 1},
+      private = {label = "Private lawyer", note = "Paid up front. Halves the sentence and cuts the fine by 30%.",
+        hours = 0.5, fine = 0.7, feeShare = 0.15, feePerHour = 75, feeMinimum = 1500},
+    },
+    -- Real minutes per game day when RLS does not report its day length: a sentence moves the mod's own
+    -- timers (heat, workshop jobs, offers, bans) by the play time that many game hours take.
+    fallbackDayMinutes = 60,
+    stations = {
+      -- The reception hall inside the Belasco police station, facing the counter.
+      rls_west_coast = {
+        label = "the Belasco police station",
+        pos = {-743.46, 744.92, 86.24},
+        dir = {-0.997, -0.028, 0},
+      },
+    },
+  },
+
   -- Walk this far from a stolen car you have not stored, with no pursuit on you, and it is left behind.
   abandonDistance = 120,
 

@@ -8,7 +8,7 @@ return function(ctx)
     config.heatMultipliers, config.undergroundEvent
   -- From the other parts; bound by the function this file returns once every part is installed.
   local buyerArchetypes, caseLimit, completeUndergroundSale, expensesFor, findCase, findOffer, gameTime,
-    handoverBlocked, heatStatus, inventory, load, paintStingChance, perk, removeOffer, repainted, roundPrice,
+    handoverBlocked, heatStatus, inCustody, inventory, load, paintStingChance, perk, removeOffer, repainted, roundPrice,
     save, scheduleNextOffer, skillProgress, undergroundValue, vehicleCase
 
   -- The case the Underground app is showing: the one the player picked, else the first stored car,
@@ -111,7 +111,7 @@ return function(ctx)
   end
 
   function M.undergroundList(price)
-    if not load() then return end
+    if not load() or inCustody() then return end
     local case = selectedCase()
     if not case or case.phase ~= "ready" or not vehicleCase(case.inventoryId) or case.seizure then return end
     price = roundPrice(price)
@@ -124,7 +124,7 @@ return function(ctx)
   end
 
   function M.undergroundUnlist()
-    if not load() then return end
+    if not load() or inCustody() then return end
     local case = sellableCase()
     if not case then return end
     case.phase, case.listing, session.negotiation = "ready", nil, nil
@@ -133,7 +133,7 @@ return function(ctx)
   end
 
   function M.undergroundSetPrice(price)
-    if not load() then return end
+    if not load() or inCustody() then return end
     local case = sellableCase()
     if not case then return end
     case.listing.price = roundPrice(price)
@@ -143,7 +143,7 @@ return function(ctx)
   end
 
   function M.undergroundAccept(offerId)
-    if not load() then return end
+    if not load() or inCustody() then return end
     local case = sellableCase()
     local offer = findOffer(case, tonumber(offerId))
     if not offer or offer.expiresAt <= gameTime() then return end
@@ -153,7 +153,7 @@ return function(ctx)
   end
 
   function M.undergroundDecline(offerId)
-    if not load() then return end
+    if not load() or inCustody() then return end
     local case = sellableCase()
     if not case then return end
     removeOffer(case, tonumber(offerId))
@@ -192,6 +192,7 @@ return function(ctx)
     gameTime = ctx.gameTime
     handoverBlocked = ctx.handoverBlocked
     heatStatus = ctx.heatStatus
+    inCustody = ctx.inCustody
     inventory = ctx.inventory
     load = ctx.load
     paintStingChance = ctx.paintStingChance

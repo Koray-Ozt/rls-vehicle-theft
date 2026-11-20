@@ -7,15 +7,16 @@ return function(ctx)
   local heatHotSeconds, heatWarmSeconds, sightRanges, stingSeconds =
     config.heatHotSeconds, config.heatWarmSeconds, config.sightRanges, config.stingSeconds
   -- From the other parts; bound by the function this file returns once every part is installed.
-  local caseForVehicle, caseVehicleId, count, disguised, distance, findCase, gameTime, grantXp, heatStatus,
-    inventory, notify, paintRecognitionChance, recordColor, save, seize
+  local arrestForTheft, caseForVehicle, caseVehicleId, count, disguised, distance, findCase, gameTime, grantXp, heatStatus,
+    inventory, notify, paintRecognitionChance, recordColor, save
 
   -- Undercover buyers ---------------------------------------------------------------------------------
   -- Accepting an undercover cop's offer is a sting, not a sale. The listing is gone and the car stays yours,
   -- but the police now know its new plate and the colour the buyer saw, so it is back to an undisguised,
   -- freshly reported car: it needs another identity change and another repaint. state.sting then hunts the
   -- seller: the next vehicle the player drives (at once if they are driving) gets an immediate pursuit, like a
-  -- carjacking report. Lose it and the operation ends; get arrested and the car is seized with the theft fine.
+  -- carjacking report. Lose it and the operation ends; get arrested and the car is seized and you go into
+  -- custody (custody.lua), where the theft fine is set at sentencing.
 
   -- Starts the sting pursuit on the vehicle the player is driving. Returns true once a chase is on.
   local function startStingPursuit()
@@ -35,7 +36,7 @@ return function(ctx)
     end
     sting.pursuing = vehId
     save()
-    notify("Unmarked units are on you. Lose them, or the stolen car is seized and the theft fine charged.")
+    notify("Unmarked units are on you. Lose them, or the stolen car is seized and you are arrested.")
     return true
   end
 
@@ -111,7 +112,7 @@ return function(ctx)
         core_jobsystem.create(function(job)
           job.sleep(0.1)
           local case = session.state and findCase(serial)
-          if case then seize("The undercover sting ended in your arrest.", case) end
+          if case then arrestForTheft("The undercover sting ended in your arrest.", case, "undercover sting", true) end
         end, 1)
       end
     end
@@ -130,7 +131,7 @@ return function(ctx)
         -- A fully disguised car caught for an ordinary offence is just a car: RLS charges its normal fine.
         if session.state and findCase(arrestedCase.serial) == arrestedCase and not disguised(arrestedCase)
           and caseVehicleId(arrestedCase) == id then
-          seize("Police identified the stolen vehicle.", arrestedCase)
+          arrestForTheft("Police identified the stolen vehicle.", arrestedCase, "stolen vehicle identified")
         end
       end, 1)
     end
@@ -201,6 +202,7 @@ return function(ctx)
   ctx.updateSting = updateSting
 
   return function()
+    arrestForTheft = ctx.arrestForTheft
     caseForVehicle = ctx.caseForVehicle
     caseVehicleId = ctx.caseVehicleId
     count = ctx.count
@@ -215,6 +217,5 @@ return function(ctx)
     paintRecognitionChance = ctx.paintRecognitionChance
     recordColor = ctx.recordColor
     save = ctx.save
-    seize = ctx.seize
   end
 end
