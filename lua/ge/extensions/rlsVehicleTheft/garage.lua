@@ -6,12 +6,27 @@ return function(ctx)
   local baseColor, caseVehicleId, count, grantXp, inventory, keyLabel, notify, openScrapDialog, recordColor,
     save, transitCase
 
-  -- The owned garage whose entrance is within reach of the vehicle, if any.
+  -- Distance on the map, ignoring height. A garage without doors is placed at the centre of its zone and
+  -- RLS puts that point at the terrain height, which is 0 under a pier or platform (Dockside Garage sits at
+  -- z 75 and its reference point at z 0), so a 3D distance would never come within reach of such a garage.
+  local function flatDistance(a, b)
+    local dx, dy = a.x - b.x, a.y - b.y
+    return math.sqrt(dx * dx + dy * dy)
+  end
+
+  -- The owned garage whose entrance is within reach of the vehicle, if any. Every owned garage is
+  -- measured, not only the one RLS finds closest in 3D, which that same height error can get wrong.
   local function ownedGarageNear(vehicle)
-    local garage = inventory().getClosestGarage(vehicle:getPosition())
-    local door = garage and overhaul_world_facilities.getAverageDoorPositionForFacility(garage)
-    if door and door:distance(vehicle:getPosition()) <= 35
-      and overhaul_career_garage_garageManager.isPurchasedGarage(garage.id) then return garage end
+    local position = vehicle:getPosition()
+    local manager = overhaul_career_garage_garageManager
+    local facilities = overhaul_world_facilities.getFacilities(getCurrentLevelIdentifier())
+    local best, bestDistance = nil, 35
+    for _, garage in pairs(facilities and facilities.garages or {}) do
+      local door = manager.isPurchasedGarage(garage.id) and overhaul_world_facilities.getAverageDoorPositionForFacility(garage)
+      local meters = door and flatDistance(door, position)
+      if meters and meters <= bestDistance then best, bestDistance = garage, meters end
+    end
+    return best
   end
 
   -- Storing refusals are only on-screen messages; these lines leave a trace in beamng.log (tag rlsVehicleTheft).
@@ -26,7 +41,8 @@ return function(ctx)
     if not garage then return "closest garage: none" end
     local door = overhaul_world_facilities.getAverageDoorPositionForFacility(garage)
     return string.format("closest garage: %s, distance: %s, owned: %s", tostring(garage.id),
-      door and string.format("~%d m", math.floor(door:distance(vehicle:getPosition()) / 10) * 10) or "no position",
+      door and string.format("~%d m (map), reference height %.0f vs car %.0f", math.floor(flatDistance(door, vehicle:getPosition()) / 10) * 10,
+        door.z, vehicle:getPosition().z) or "no position",
       tostring(overhaul_career_garage_garageManager.isPurchasedGarage(garage.id)))
   end
 
