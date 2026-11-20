@@ -14,6 +14,22 @@ return function(ctx)
       and overhaul_career_garage_garageManager.isPurchasedGarage(garage.id) then return garage end
   end
 
+  -- Storing refusals are only on-screen messages; these lines leave a trace in beamng.log (tag rlsVehicleTheft).
+  local function trace(message)
+    log("I", "rlsVehicleTheft", message)
+  end
+
+  -- One line on where the car is relative to the closest garage, for the log: which garage RLS finds closest,
+  -- how far its door/zone centre is, and whether the player owns it.
+  local function describeGarage(vehicle)
+    local garage = inventory().getClosestGarage(vehicle:getPosition())
+    if not garage then return "closest garage: none" end
+    local door = overhaul_world_facilities.getAverageDoorPositionForFacility(garage)
+    return string.format("closest garage: %s, distance: %s, owned: %s", tostring(garage.id),
+      door and string.format("~%d m", math.floor(door:distance(vehicle:getPosition()) / 10) * 10) or "no position",
+      tostring(overhaul_career_garage_garageManager.isPurchasedGarage(garage.id)))
+  end
+
   -- Same test the RLS garage computer uses to list a vehicle (inventory/ui.lua vehicleOverlapsZone):
   -- any node inside one of the garage's zones. A car stored outside them never shows on the computer.
   local function insideGarage(vehicle, garage)
@@ -34,6 +50,10 @@ return function(ctx)
     local case = transitCase()
     if not case then return end
     local function refuse(message)
+      if message ~= session.lastStoreRefusal then
+        trace(string.format("store refused (%s): %s | speed %.1f m/s", auto and "auto" or "key", message,
+          vehicle:getVelocity():length()))
+      end
       if not auto or message ~= session.lastStoreRefusal then notify(message) end
       session.lastStoreRefusal = message
     end
@@ -82,7 +102,11 @@ return function(ctx)
       return
     end
     local id = inventory().addVehicle(session.liveId, nil, {owned = true, takesNoInventorySpace = false})
-    if not id then return end
+    if not id then
+      trace("store failed: RLS addVehicle returned no inventory id for vehicle " .. tostring(session.liveId))
+      return
+    end
+    trace(string.format("store ok: vehicle %s added as inventory id %s in garage %s", tostring(session.liveId), tostring(id), tostring(garage.id)))
     case.inventoryId, case.phase = id, "stored"
     local record = inventory().getVehicles()[id]
     record.rlsTheftCase = case.serial
@@ -135,6 +159,15 @@ return function(ctx)
   -- parkedTicks belongs to the transit case alone: other open cases must not reset it.
   local function updateStorage(case)
     local stolen = session.liveId and getObjectByID(session.liveId)
+    -- Log only when the picture changes: stolen car found, near an owned garage, driven or walking.
+    local state = stolen and string.format("car found | near owned garage: %s | %s | %s",
+      tostring(ownedGarageNear(stolen) ~= nil), be:getPlayerVehicleID(0) == session.liveId and "driving it" or
+      (gameplay_walk.isWalking() and "on foot" or "in another vehicle"), describeGarage(stolen))
+      or string.format("stolen car object missing (liveId %s)", tostring(session.liveId))
+    if state ~= session.storageTrace then
+      session.storageTrace = state
+      trace("storage check: " .. state)
+    end
     if stolen and ownedGarageNear(stolen) then
       if be:getPlayerVehicleID(0) == session.liveId then
         -- A car that is only parked, never stored, is not in the inventory: saving and reloading would lose it.
