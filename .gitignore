@@ -1,8 +1,9 @@
 # Build output: release ZIPs are attached to GitHub releases, not committed.
 *.zip
 
-# Local documentation
-/docs/
+# Local documentation (the architecture reference is versioned)
+/docs/*
+!/docs/ARCHITECTURE.md
 
 # OS and editor files
 Thumbs.db

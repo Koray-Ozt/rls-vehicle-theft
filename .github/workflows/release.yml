@@ -2,7 +2,7 @@
 # Run it from the Actions tab (or the API) with the release tag, e.g. v0.9.0.
 # - The zip holds only the mod folders (gameplay, lua, scripts, settings, ui), as BeamNG expects.
 # - An existing asset with the same name is replaced; the release is created if it does not exist.
-# - The release notes are taken from the README's "### <version>" changelog section.
+# - The release notes are taken from the matching "### <version>" section in README or CHANGELOG.
 # The tag itself is never moved.
 name: Publish release
 
@@ -47,13 +47,21 @@ jobs:
 
       - name: Extract changelog section
         run: |
-          awk -v header="### ${VERSION}" '
-            $0 == header { found = 1; next }
-            found && /^### / { exit }
-            found { print }
-          ' README.md > notes.md
-          if ! grep -q '[^[:space:]]' notes.md; then
-            echo "::error::README has no '### ${VERSION}' changelog section"
+          FOUND=false
+          for SOURCE in README.md CHANGELOG.md; do
+            awk -v header="### ${VERSION}" '
+              $0 == header { found = 1; next }
+              found && /^### / { exit }
+              found { print }
+            ' "$SOURCE" > notes.md
+            if grep -q '[^[:space:]]' notes.md; then
+              echo "Release notes from $SOURCE"
+              FOUND=true
+              break
+            fi
+          done
+          if [ "$FOUND" != true ]; then
+            echo "::error::No '### ${VERSION}' changelog section in README or CHANGELOG"
             exit 1
           fi
 

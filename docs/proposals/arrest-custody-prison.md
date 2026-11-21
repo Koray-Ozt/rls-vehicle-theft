@@ -159,9 +159,8 @@ Stub tests (45, with Phases 1 and 2):
 - the listing, offers, negotiation, sting and scrap dialog of a seized case are gone; a disguised car's listing stays;
 - Underground actions are refused while in custody.
 
-In game: arrest with a second, stored undisguised car and a third, disguised and listed car; check the garage, the Underground app and the sentencing counts.
+In-game validation on West Coast with BeamNG 0.40.6 and RLS 2.8.1 covered arrest, the search and seizure of other stolen cars, sentencing, the private lawyer, resuming after closing the game and a multi-day sentence. RLS's daily economy systems were observed to behave as expected during the time skip. The stub tests are not shipped with the mod.
 
 ## Open technical questions
 
 - Station spots for the RLS Career Collection maps (they fall back to the nearest garage until `debugPosition` spots are added).
-- Do RLS systems that run per game day (loans, rent, business income) react to days skipped by `sleepTo`? To be checked in game with a multi-day sentence.
