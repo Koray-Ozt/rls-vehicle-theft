@@ -3,7 +3,7 @@
 return function(ctx)
   local session = ctx.session
   -- From the other parts; bound by the function this file returns once every part is installed.
-  local baseColor, caseVehicleId, count, grantXp, inventory, keyLabel, notify, openScrapDialog, recordColor,
+  local baseColor, carChased, caseVehicleId, count, grantXp, inventory, keyLabel, notify, openScrapDialog, recordColor,
     save, transitCase
 
   -- Distance on the map, ignoring height. A garage without doors is placed at the centre of its zone and
@@ -73,9 +73,8 @@ return function(ctx)
       if not auto or message ~= session.lastStoreRefusal then notify(message) end
       session.lastStoreRefusal = message
     end
-    local pursuit = overhaul_integration_services_police.getPursuitData(session.liveId)
-    -- Mode -1 is an arrest in progress, not a lost pursuit.
-    if pursuit and (pursuit.mode or 0) ~= 0 then
+    -- Mode -1 is an arrest in progress, not a lost pursuit. Police chasing the player on foot count too.
+    if carChased(session.liveId) then
       refuse("Lose the police before storing the vehicle.")
       return
     end
@@ -212,6 +211,7 @@ return function(ctx)
 
   return function()
     baseColor = ctx.baseColor
+    carChased = ctx.carChased
     caseVehicleId = ctx.caseVehicleId
     count = ctx.count
     grantXp = ctx.grantXp

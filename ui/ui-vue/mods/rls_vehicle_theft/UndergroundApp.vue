@@ -352,7 +352,7 @@ const priceHint = computed(() => {
   return "Around value: offers arrive at a normal pace."
 })
 
-// Estimated net = sale price minus the expenses recorded for this car (identity change). Shown with a word
+// Estimated net = sale price minus the expenses recorded for this car. Shown with a word
 // as well as a sign so profit, loss and break-even never rely on colour alone.
 const net = (value, spent) => Math.round(Number(value) || 0) - Math.round(Number(spent) || 0)
 const netText = (value, spent) => {
@@ -365,10 +365,13 @@ const netTone = (value, spent) => { const n = net(value, spent); return n > 0 ? 
 const expenseNote = computed(() => {
   const v = vehicle.value
   const parts = []
-  if (Number(v?.expensesIdentity) > 0) parts.push(`${money(v.expensesIdentity)} identity change`)
-  if (Number(v?.expensesPaint) > 0) parts.push(`${money(v.expensesPaint)} repaint`)
-  const base = parts.length ? `After ${parts.join(" and ")}.` : "No recorded expenses yet."
-  return v?.expensesPartial ? `${base} Some earlier costs were not recorded.` : base
+  if (Number(v?.expensesIdentity) > 0) parts.push(`${money(v.expensesIdentity)} identity`)
+  if (Number(v?.expensesPaint) > 0) parts.push(`${money(v.expensesPaint)} paint`)
+  if (Number(v?.expensesParts) > 0) parts.push(`${money(v.expensesParts)} parts`)
+  if (Number(v?.expensesTuning) > 0) parts.push(`${money(v.expensesTuning)} tuning`)
+  if (Number(v?.expensesRepair) > 0) parts.push(`${money(v.expensesRepair)} repairs`)
+  const base = parts.length ? `Recorded costs: ${parts.join(" · ")}.` : "No recorded costs yet."
+  return v?.expensesPartial ? `${base} Earlier costs may be missing.` : base
 })
 
 const stingText = "The deal is off and the car's new plate is burned. Lose the police: if they catch you, the car is seized and the theft fine is charged. To sell it again, change its identity and repaint it once more."

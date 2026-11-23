@@ -43,6 +43,24 @@ return function(ctx)
     return car.model, car.config
   end
 
+  -- Catalog value is available before a street car enters career inventory. Resolve simplified parked/traffic
+  -- props to the real configuration they represent, so the prop's own (irrelevant) value is never used.
+  local function streetVehicleValue(vehicle)
+    local model, configFile = realModelFor(vehicle)
+    if model == false then return nil end
+    model = model or vehicle:getJBeamFilename()
+    local data = core_vehicles.getModel(model)
+    if not data then return nil end
+    local config = vehicle.partConfig
+    if vehicle:getJBeamFilename() == "simple_traffic" then config = configFile end
+    local key = config and string.match(config, "([^/\\]+)$")
+    if key then key = string.gsub(key, "%.pc$", "") end
+    if (not key or key == "") and data.model then key = data.model.default_pc end
+    local details = data.configs and data.configs[key]
+    local value = details and tonumber(details.Value)
+    if value and value > 0 and value < math.huge then return value end
+  end
+
   -- Deletes the prop and spawns the real car it shows in the same place, paint and plate. Returns the new vehicle.
   local function replaceProp(vehicle)
     local model, configFile = realModelFor(vehicle)
@@ -264,6 +282,7 @@ return function(ctx)
   ctx.replaceProp = replaceProp
   ctx.resetForcedStops = resetForcedStops
   ctx.streetReportDelay = streetReportDelay
+  ctx.streetVehicleValue = streetVehicleValue
 
   return function()
     accessDistance = ctx.accessDistance

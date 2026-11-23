@@ -1,10 +1,11 @@
--- Wraps RLS functions: title transfers of stolen cars, camera fines, repaint costs, test-drive bans
+-- Wraps RLS functions: title transfers of stolen cars, camera fines, vehicle expenses, test-drive bans
 -- and the Vehicle Theft entry on the Skills page.
 
 return function(ctx)
   local session = ctx.session
+  local expenseKind = require("rlsVehicleTheft/expenseKind")
   -- From the other parts; bound by the function this file returns once every part is installed.
-  local caseForVehicle, decorateSkillsPage, gameTime, inventory, load, notify, save, seize, vehicleCase
+  local caseForVehicle, decorateSkillsPage, gameTime, inventory, load, notify, seize, vehicleCase
 
   -- Wrapped RLS functions, so they can be put back when the extension unloads.
   local bindings = {}
@@ -71,28 +72,35 @@ return function(ctx)
         return original(buttons, title, ...)
       end
     end)
+    -- Paint uses payment.pay, but parts and tuning debit playerAttributes directly. Capture the actual wallet
+    -- receipt at their shared entry point, before RLS turns reason.tags from an array into a lookup table.
+    bind(overhaul_career_economy_playerAttributes, "addAttributes", function(original)
+      return function(change, reason, fullprice, onRecorded)
+        local finance = type(reason) == "table" and reason.finance
+        local vehicleId = type(finance) == "table" and finance.vehicleId
+        local money = type(change) == "table" and tonumber(change.money)
+        local kind = expenseKind(reason, money)
+        if not vehicleId or not kind then return original(change, reason, fullprice, onRecorded) end
+        return original(change, reason, fullprice, function(row)
+          local posted = row and row.attributeChange and tonumber(row.attributeChange.money)
+          if posted and ((money < 0 and posted < 0) or (money > 0 and posted > 0)) then
+            local case = load() and vehicleCase(vehicleId)
+            if case then
+              case.expenses = case.expenses or {}
+              case.expenses[kind] = math.max(0, (tonumber(case.expenses[kind]) or 0) - posted)
+            end
+          end
+          if onRecorded then onRecorded(row) end
+        end)
+      end
+    end)
     bind(overhaul_career_economy_payment, "pay", function(original)
       return function(price, reason, ...)
         if type(reason) == "table" and cameraFineLabels[reason.label] and wearsOriginalPlate() then
           notify("Camera fine sent to the vehicle's registered owner.")
           return true
         end
-        local result = original(price, reason, ...)
-        -- RLS charges a repaint with tags {"vehiclePainting"} and finance.vehicleId = the inventory id.
-        -- A successful charge on a stolen car is recorded as that car's repaint expense.
-        local paint = result and type(reason) == "table" and type(reason.tags) == "table" and reason.finance
-        if paint and paint.vehicleId and load() then
-          local isPainting = false
-          for _, tag in ipairs(reason.tags) do if tag == "vehiclePainting" then isPainting = true end end
-          local case = isPainting and vehicleCase(paint.vehicleId)
-          local amount = case and type(price) == "table" and price.money and tonumber(price.money.amount)
-          if amount and amount > 0 then
-            case.expenses = case.expenses or {}
-            case.expenses.paint = (tonumber(case.expenses.paint) or 0) + amount
-            save()
-          end
-        end
-        return result
+        return original(price, reason, ...)
       end
     end)
     bind(overhaul_career_progression_skillsPage, "getLandingPageData", decorateSkillsPage)
@@ -126,7 +134,6 @@ return function(ctx)
     inventory = ctx.inventory
     load = ctx.load
     notify = ctx.notify
-    save = ctx.save
     seize = ctx.seize
     vehicleCase = ctx.vehicleCase
   end

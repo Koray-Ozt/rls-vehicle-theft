@@ -1,8 +1,32 @@
 # Changelog
 
-Release history before 0.10.0. For the current release, see the [README](README.md#changes).
+Release history before 0.11.0. For the current release, see the [README](README.md#changes).
 
 ## Releases
+
+### 0.10.0
+
+This release adds arrest and custody: a theft arrest now takes you to the police station, the police search for your other stolen cars, a court sets a sentence and a lawyer can lower it, and the game clock moves forward while you serve it. Saves from 0.9.6 load without any action.
+
+**Added**
+- **Custody after a theft arrest.** When a patrol identifies a stolen car or undercover units catch the seller of a sting, the screen goes black with BUSTED, you are put on foot and taken to the police station: the Belasco station's reception hall on West Coast, the nearest garage on maps without a station on record. RLS still charges its own arrest fine. An arrest of a fully disguised car stays an ordinary RLS arrest.
+- **The police search.** The arrested car and every other open case the police can still link to a theft report are seized, wherever the car is: carried, stored, in the workshop, being stripped or listed in the Underground app. Its listing and offers go with it. A car with a new plate and a new colour is not linked and stays yours, listing included. Cars you own legally are never touched. Open test-drive investigations are closed into the same sentence.
+- **Sentencing and your lawyer.** A sentencing screen lists each seized car with its theft fine. The sentence is in game hours: 6 for a street car, 10 for a dealership car, 12 for a test drive, at least 18 for a taxi, more for recent arrests, police evades and a sting, plus half the base of every other seized car, at most 72 hours.
+  - The public defender is free and leaves the sentence and fines as they are.
+  - A private lawyer halves the sentence and cuts the fines by 30%. The fee (15% of the fines plus $75 per hour, at least $1,500) is paid up front and needs the money in hand.
+- **Serving the sentence.** A few seconds of black screen, while the game clock moves forward by the sentence, over several days if needed (through RLS's dynamic weather; without it only the time of day moves). The mod's own timers move with it: heat cools, workshop jobs finish, offers expire. Then you are released with a message stating the time served and what you paid.
+- Console helpers: `rlsVehicleTheft.debugCustody()` runs custody for an imaginary car without searching your real ones, and `rlsVehicleTheft.debugPosition()` prints where you stand as a station entry for `config.lua`.
+
+**Changed**
+- The theft fine of an arrest is charged at sentencing instead of with the seizure, so the lawyer can lower it, and it is charged once. Seizures without an arrest (a handover raid, a failed title transfer) charge it at once, as before.
+- During custody the take/store key, the Underground app's actions and the garage computer's theft rows do nothing.
+- Custody is saved at every step. Closing the game during it is safe: it continues where it stopped the next time you load the profile, and no car is seized or fine charged twice.
+
+**Tested**
+- Version 0.10.0 was played on West Coast with BeamNG 0.40.6 and RLS 2.8.1. In-game checks covered the BUSTED screen, station transfer, seizure of other stolen cars, sentencing, the private lawyer, release, resuming after the game was closed, and a multi-day sentence. RLS's daily economy systems (loans, rent and business income) behaved as expected during the time skip. The theft-to-sale flow, Vehicle Theft skill and perks, and theft milestones were also checked in-game with RLS 2.8.1. The mod does not ship automated regression tests.
+
+**Upgrading from 0.9.6**
+- Remove `rls_vehicle_theft_0.9.6.zip` (or any older version) from your `mods` folder before adding 0.10.0. Saves load without any action.
 
 ### 0.9.6
 

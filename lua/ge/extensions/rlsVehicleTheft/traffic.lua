@@ -181,6 +181,10 @@ return function(ctx)
 
   function M.onTrafficVehicleAdded(id)
     if not session.state then return end
+    if session.ignoreTrafficAdd == id then
+      session.ignoreTrafficAdd = nil
+      return
+    end
     if trafficSpawnPending then
       trafficSpawnPending = nil
       trafficLog("replacement car " .. tostring(id) .. " joined traffic")

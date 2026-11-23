@@ -6,9 +6,15 @@
 
 Career-owned theft data is saved in `/career/rlsVehicleTheft.json` inside the active career slot. Each case stores its theft source, expected police report time, current workflow phase, optional inventory vehicle ID, identity and paint state, and underground listing. Runtime-only state includes the active negotiation, selected phone-app case, and the live vehicle ID during a theft in transit.
 
+## Ignition bypass
+
+`theft.lua` passes the dealership listing value or a street vehicle's configuration catalog `Value` to `ignition.lua` before the ignition probe. Simplified traffic props resolve through `streetCars.lua` to the real model and configuration they represent. The value selects a fixed basic, standard, or advanced security tier for that attempt; an unreadable value uses standard. The tier sets the timer, target width, and marker speed. Vehicle Theft perks then adjust the target width and miss penalty. Lua owns timing and hit detection: the three circuits alternate sweep direction, and each new target is at least four track units from the previous one. `IgnitionBypass.vue` displays the circuit, progress, direction, alarm and timing through the bridge event. Running engines still skip the bypass.
+
 ## Underground app flow
 
 The Underground Vue app requests case data from `rlsVehicleTheft.getUndergroundState()` and receives refreshes over the `RlsTheftUnderground` bridge event. UI actions call extension functions through the game Lua bridge. Lua remains authoritative for case state, calculations, offers, and sale outcomes; the Vue app renders the returned view model.
+
+The sale estimate subtracts recorded spending on the selected stolen car: identity changes, paint, parts, tuning and repairs (net of repair refunds). RLS records paint through `payment.pay` and parts/tuning through `playerAttributes.addAttributes`; `rlsHooks.lua` observes their shared wallet receipt, matches the explicit inventory vehicle ID and classifies the payment before RLS normalizes its tags. New theft cases carry an expense-tracking marker. For older cases, `cases.lua` reads saved RLS financial rows with the same vehicle ID once and merges their known costs without double counting; it keeps the partial-cost warning because untagged earlier spending cannot be proven. RLS's normal purchase save persists the updated case with the vehicle; the hook does not start a save in the middle of checkout. Police fines and insurance fees are excluded.
 
 ## Vehicle heat
 

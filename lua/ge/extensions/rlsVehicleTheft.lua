@@ -94,6 +94,7 @@ function M.onOverhaulBeforeSetProfile()
   session.profile, session.state, session.attempted, session.liveId = nil, nil, nil, nil
   session.negotiation, session.lastResult = nil, nil
   session.parkedTicks, session.scrapDialog, session.custodyJob, session.custodyView = 0, nil, nil, nil
+  session.appOpen = nil
   ctx.resetIgnition(true)
   ctx.resetForcedStops()
   ctx.resetTrafficTopUp()
@@ -102,6 +103,8 @@ end
 function M.onClientEndMission()
   session.attempted, session.liveId = nil, nil
   session.parkedTicks, session.scrapDialog = 0, nil
+  -- The phone app may be torn down without telling us; a stale flag would block the take/store key.
+  session.appOpen = nil
   -- Custody cut short by the level change resumes on the new level (state.custody is saved).
   session.custodyJob, session.custodyView = nil, nil
   ctx.resetIgnition(false)

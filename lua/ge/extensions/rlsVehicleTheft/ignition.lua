@@ -3,8 +3,8 @@
 return function(ctx)
   local M = ctx.M
   local config = ctx.config
-  local ignitionFailCooldown, ignitionGrace, ignitionHalfWidths, ignitionLostGrace, ignitionMissPenalty, ignitionRoute, ignitionSeconds, ignitionSpeeds, ignitionStages =
-    config.ignitionFailCooldown, config.ignitionGrace, config.ignitionHalfWidths, config.ignitionLostGrace, config.ignitionMissPenalty, config.ignitionRoute, config.ignitionSeconds, config.ignitionSpeeds, config.ignitionStages
+  local ignitionFailCooldown, ignitionGrace, ignitionHalfWidths, ignitionLostGrace, ignitionMissPenalty, ignitionRoute, ignitionSpeeds, ignitionStages, ignitionValueTiers =
+    config.ignitionFailCooldown, config.ignitionGrace, config.ignitionHalfWidths, config.ignitionLostGrace, config.ignitionMissPenalty, config.ignitionRoute, config.ignitionSpeeds, config.ignitionStages, config.ignitionValueTiers
   -- From the other parts; bound by the function this file returns once every part is installed.
   local accessDistance, availableStreetCar, gameTime, inspectedDealer, logStreetCarState, notify, perk,
     releaseForcedStop, walkingPlayer
@@ -14,6 +14,24 @@ return function(ctx)
   local bypassMisses = {}
   -- The engine start after a theft (see finishIgnition and updateStarter).
   local starter
+
+  local function difficultyFor(value)
+    value = tonumber(value)
+    if not value or value <= 0 or value >= math.huge then return ignitionValueTiers[2] end
+    for _, tier in ipairs(ignitionValueTiers) do
+      if not tier.maxValue or value <= tier.maxValue then return tier end
+    end
+    return ignitionValueTiers[2]
+  end
+
+  local function nextTarget(previous)
+    if not previous then return math.random(4, 12) end
+    local choices = {}
+    for target = 4, 12 do
+      if math.abs(target - previous) >= 4 then choices[#choices + 1] = target end
+    end
+    return choices[math.random(1, #choices)]
+  end
   local function canContinueIgnition(challenge)
     local vehicle = getObjectByID(challenge.id)
     local player = walkingPlayer()
@@ -85,10 +103,10 @@ return function(ctx)
     end
   end
 
-  local function checkIgnition(vehicle, seller, testDrive, complete)
+  local function checkIgnition(vehicle, seller, testDrive, value, complete)
     ignitionToken = ignitionToken + 1
     ignition = {id = vehicle:getID(), token = ignitionToken, seller = seller, testDrive = testDrive,
-      complete = complete, probeTime = 2}
+      value = value, complete = complete, probeTime = 2}
     vehicle:queueLuaCommand(string.format([[
       local e = electrics and electrics.values or {}
       local running = e.engineRunning == true or e.engineRunning == 1
@@ -128,8 +146,10 @@ return function(ctx)
   end
 
   local function ignitionSignalAt(challenge, time)
-    local cursor = (math.max(0, time) * ignitionSpeeds[challenge.stage]) % 30
+    local cursor = (math.max(0, time) * ignitionSpeeds[challenge.stage] * challenge.speedScale) % 30
     if cursor > 15 then cursor = 30 - cursor end
+    -- The middle circuit sweeps from the other side, so all three locks do not play identically.
+    if challenge.stage % 2 == 0 then cursor = 15 - cursor end
     return cursor, math.abs(cursor - challenge.target) <= ignitionHalfWidths[challenge.stage] * (challenge.widthScale or 1)
   end
 
@@ -152,9 +172,11 @@ return function(ctx)
     local cursor, inTarget = ignitionSignal(challenge)
     return {token = challenge.token, cursor = cursor / 15, target = challenge.target / 15,
       width = 2 * ignitionHalfWidths[challenge.stage] * (challenge.widthScale or 1) / 15, matched = challenge.stage - 1, stages = ignitionStages,
-      remaining = challenge.remaining, duration = ignitionSeconds, inTarget = inTarget,
+      remaining = challenge.remaining, duration = challenge.duration, difficulty = challenge.difficulty,
+      inTarget = inTarget,
       started = challenge.started == true, feedback = challenge.feedback ~= nil,
-      missed = challenge.feedbackKind == "miss", penalty = challenge.missPenalty or ignitionMissPenalty}
+      missed = challenge.feedbackKind == "miss", misses = challenge.misses or 0,
+      penalty = challenge.missPenalty or ignitionMissPenalty}
   end
 
   local function publishIgnition()
@@ -167,17 +189,21 @@ return function(ctx)
     local vehicle = canContinueIgnition(challenge)
     if not vehicle then
       ignition = nil
+      releaseForcedStop(challenge.id)
+      notify("The vehicle is no longer available for ignition bypass.")
       return
     end
     if running then
       finishIgnition(challenge, vehicle, false)
       return
     end
-    challenge.stage, challenge.time, challenge.remaining = 1, 0, ignitionSeconds
+    local tier = difficultyFor(challenge.value)
+    challenge.stage, challenge.time, challenge.remaining = 1, 0, tier.seconds
+    challenge.duration, challenge.difficulty, challenge.speedScale = tier.seconds, tier.label, tier.speed
     -- Vehicle Theft perks, fixed for this attempt.
-    challenge.widthScale = perk("ignitionWidth", 1)
+    challenge.widthScale = tier.width * perk("ignitionWidth", 1)
     challenge.missPenalty = perk("missPenalty", ignitionMissPenalty)
-    challenge.target = math.random(4, 12)
+    challenge.target = nextTarget()
     challenge.frame, challenge.idle = 0, 0
     challenge.misses = bypassMisses[challenge.id] or 0
     if challenge.misses > 0 then notify("The alarm on this car is still tripped from your last attempt.") end
@@ -225,7 +251,7 @@ return function(ctx)
         finishIgnition(challenge, vehicle, true)
       else
         challenge.stage = challenge.stage + 1
-        challenge.target = math.random(4, 12)
+        challenge.target = nextTarget(challenge.target)
         challenge.time, challenge.feedback, challenge.feedbackKind = 0, 0.5, "match"
         publishIgnition()
       end

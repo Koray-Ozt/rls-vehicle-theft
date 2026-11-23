@@ -7,7 +7,7 @@ return function(ctx)
   local heatHotSeconds, heatWarmSeconds, sightRanges, stingSeconds =
     config.heatHotSeconds, config.heatWarmSeconds, config.sightRanges, config.stingSeconds
   -- From the other parts; bound by the function this file returns once every part is installed.
-  local arrestForTheft, caseForVehicle, caseVehicleId, count, disguised, distance, findCase, gameTime, grantXp, heatStatus,
+  local arrestForTheft, caseForPursuit, caseVehicleId, count, disguised, distance, findCase, gameTime, grantXp, heatStatus,
     inventory, notify, paintRecognitionChance, recordColor, save
 
   -- Undercover buyers ---------------------------------------------------------------------------------
@@ -101,7 +101,7 @@ return function(ctx)
       session.state.sting = nil
       if action == "evade" then
         -- When the chased car is the stolen one, the case handler below counts the evasion.
-        if not caseForVehicle(id) then count("evaded") end
+        if not caseForPursuit(id) then count("evaded") end
         grantXp(15, "Undercover sting escaped")
         notify("You lost the undercover units. The car is still yours, but it needs a new identity and a new colour.")
         save()
@@ -116,8 +116,10 @@ return function(ctx)
         end, 1)
       end
     end
-    local arrestedCase = caseForVehicle(id)
+    local arrestedCase = caseForPursuit(id)
     if not arrestedCase then return end
+    -- The player got out and the pursuit moved to the walking avatar (see cases.lua caseForPursuit).
+    local onFoot = caseVehicleId(arrestedCase) ~= id
     if action == "evade" then
       arrestedCase.patrolCooldownUntil = gameTime() + 45
       arrestedCase.evades = (arrestedCase.evades or 0) + 1
@@ -130,7 +132,7 @@ return function(ctx)
         job.sleep(0.1)
         -- A fully disguised car caught for an ordinary offence is just a car: RLS charges its normal fine.
         if session.state and findCase(arrestedCase.serial) == arrestedCase and not disguised(arrestedCase)
-          and caseVehicleId(arrestedCase) == id then
+          and (onFoot or caseVehicleId(arrestedCase) == id) then
           arrestForTheft("Police identified the stolen vehicle.", arrestedCase, "stolen vehicle identified")
         end
       end, 1)
@@ -142,7 +144,10 @@ return function(ctx)
   local function updatePatrol(case, now)
     -- After the identity change only an unrepainted car can still be matched to the theft report.
     if disguised(case) then return end
-    local id = case.inventoryId and inventory().getVehicleIdFromInventoryId(case.inventoryId) or session.liveId
+    -- Only the transit case follows liveId; a stored car that is not spawned must not borrow the carried car.
+    local id
+    if case.phase == "transit" then id = session.liveId
+    elseif case.inventoryId then id = inventory().getVehicleIdFromInventoryId(case.inventoryId) end
     local vehicle = id and getObjectByID(id)
     if not vehicle then
       if case.phase == "transit" then session.liveId = nil end
@@ -203,7 +208,7 @@ return function(ctx)
 
   return function()
     arrestForTheft = ctx.arrestForTheft
-    caseForVehicle = ctx.caseForVehicle
+    caseForPursuit = ctx.caseForPursuit
     caseVehicleId = ctx.caseVehicleId
     count = ctx.count
     disguised = ctx.disguised

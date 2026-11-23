@@ -17,12 +17,18 @@ return {
   -- car and is paid at once. A taxi is a commercial vehicle, so its pursuits start at RLS's top wanted level.
   taxiTheft = {cashMin = 60, cashMax = 240, wantedLevel = 3},
 
-  -- Ignition bypass: stages to match, time for all of them, and per-stage marker speed (track units/s on a
-  -- 15-unit track) and target half-width.
+  -- Ignition bypass: stages to match, per-stage marker speed (track units/s on a 15-unit track) and
+  -- target half-width. Each value tier sets its own time limit.
   ignitionStages = 3,
-  ignitionSeconds = 25,
   ignitionSpeeds = {6, 7.5, 9},
   ignitionHalfWidths = {2.1, 1.9, 1.7},
+  -- The street value is the vehicle config's catalog Value; dealership theft uses the listing value.
+  -- Unknown values use the standard tier. Perks still apply after the tier's width adjustment.
+  ignitionValueTiers = {
+    {maxValue = 15000, label = "Basic security", seconds = 29, width = 1.15, speed = 0.9},
+    {maxValue = 60000, label = "Standard security", seconds = 25, width = 1, speed = 1},
+    {label = "Advanced security", seconds = 23, width = 0.85, speed = 1.1},
+  },
   -- The UI shows the marker slightly behind the simulation (30 Hz updates + UI bridge latency),
   -- so a lock also counts if the marker was in the zone within this many seconds before the click.
   ignitionGrace = 0.16,

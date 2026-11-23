@@ -23,8 +23,11 @@ return function(ctx)
   local function theftLevel()
     if not skillCurve then
       local data = jsonReadFile(skillFile)
-      skillCurve = {}
-      for _, level in ipairs(data and data.levels or {}) do table.insert(skillCurve, level.requiredValue or 0) end
+      local curve = {}
+      for _, level in ipairs(data and data.levels or {}) do table.insert(curve, level.requiredValue or 0) end
+      -- An unreadable file must not pin the level at 1 for the whole session: retry on the next call.
+      if #curve == 0 then return 1 end
+      skillCurve = curve
     end
     local xp, level = skillXp(), 1
     for index, required in ipairs(skillCurve) do
@@ -36,7 +39,8 @@ return function(ctx)
   -- Level, XP and the XP span of the current level, for the skill card in the Underground app.
   local function skillProgress()
     local level, xp = theftLevel(), skillXp()
-    local from, to = skillCurve[level] or 0, skillCurve[level + 1]
+    local curve = skillCurve or {}
+    local from, to = curve[level] or 0, curve[level + 1]
     return {level = level, xp = math.floor(xp), from = from, to = to, max = to == nil}
   end
 

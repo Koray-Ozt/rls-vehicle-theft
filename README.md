@@ -2,7 +2,7 @@
 
 Steal a vehicle, get it into your garage, change its identity, and find a buyer through the **Underground** phone app. Police attention, vehicle condition, workshop costs and undercover buyers can change the outcome. A theft arrest can now lead to a police search, sentencing and custody.
 
-**Latest release:** [0.10.0](https://github.com/Koray-Ozt/rls-vehicle-theft/releases/tag/v0.10.0) · **Tested with:** BeamNG.drive 0.40.6 and RLS Career Overhaul 2.8.1 · **License:** [MIT](LICENSE)
+**Latest release:** [0.11.0](https://github.com/Koray-Ozt/rls-vehicle-theft/releases/tag/v0.11.0) · **Tested with:** BeamNG.drive 0.40.6 and RLS Career Overhaul 2.8.1 · **License:** [MIT](LICENSE)
 
 [Download](https://github.com/Koray-Ozt/rls-vehicle-theft/releases/latest) · [Install](#installation) · [Quick start](#quick-start) · [Gameplay](#playing) · [Controls](#controls) · [Known limits](#current-limits) · [Release notes](#changes)
 
@@ -35,7 +35,7 @@ The mod has no other dependencies and does not modify installed RLS or BeamNG ga
 ## Installation
 
 1. Install and enable **RLS Career Overhaul 2.8.1**.
-2. [Download `rls_vehicle_theft_0.10.0.zip`](https://github.com/Koray-Ozt/rls-vehicle-theft/releases/download/v0.10.0/rls_vehicle_theft_0.10.0.zip). Do not unpack it.
+2. [Download `rls_vehicle_theft_0.11.0.zip`](https://github.com/Koray-Ozt/rls-vehicle-theft/releases/download/v0.11.0/rls_vehicle_theft_0.11.0.zip). Do not unpack it.
 3. Put the ZIP in your BeamNG user folder under `mods` (for example `%LOCALAPPDATA%\BeamNG\BeamNG.drive\current\mods`).
 4. Remove any earlier `rls_vehicle_theft_*.zip` from that folder, enable the mod in the Mod Manager, and restart the game.
 5. Open an RLS career and install **Underground** from the phone's App Store to sell stolen cars.
@@ -85,7 +85,7 @@ Change the take/store shortcut in **Underground → Settings → Change binding*
 
 ### Start and store it
 
-A stopped traffic car already has its engine running. If the engine is off, open **Ignition Bypass**, select **Begin**, and lock three signals within 25 seconds. Press **Space** or click **Lock signal** while the white marker is in the green zone. A miss costs 4 seconds; failure or cancellation after Begin starts an 8-second cooldown, and alarm-triggering misses persist on that car. Vehicle Theft perks widen the target and reduce the miss penalty. Release the parking brake if the engine starts but the car will not move.
+A stopped traffic car already has its engine running. If the engine is off, open **Ignition Bypass**, select **Begin**, and lock three circuits. The middle circuit sweeps from right to left; each new target is away from the previous one. Basic security (cars worth up to $15,000) gives 29 seconds and wider, slower signals; standard security (up to $60,000) gives 25 seconds; advanced security gives 23 seconds and narrower, faster signals. Street cars use their configuration's catalog value, while dealership cars use their listing value. Cars without a readable value use standard security. Press **Space** or click **Lock signal** while the white marker is in the green zone. A miss costs 4 seconds; failure or cancellation after Begin starts an 8-second cooldown, and alarm-triggering misses persist on that car. Vehicle Theft perks widen the target and reduce the miss penalty. Release the parking brake if the engine starts but the car will not move.
 
 Lose any pursuit and stop inside a garage you own. The car stores after a few seconds standing still, when you get out, or when you press the shortcut. It uses one normal garage slot; a car left at the entrance does not count as inside. Theft XP and milestones are awarded when storage succeeds. If every slot is full, pressing the shortcut while stopped inside the garage offers to have the crew strip the car instead. Underground shows that job's countdown, and the theft rewards arrive when stripping finishes.
 
@@ -93,7 +93,7 @@ Lose any pursuit and stop inside a garage you own. The car stores after a few se
 
 At the garage computer, select **Change vehicle identity** to give the car a new plate. The job takes 150 seconds and costs 23% of the car's value, at least $1,200; perks reduce both. The Underground app shows the countdown. Driving the car out before completion cancels the job and refunds the fee. Repaint it at the same computer to break the police report's colour match.
 
-In **Underground**, set an asking price and choose **List for sale** once the identity job is done. Up to four buyer offers can wait at once; each expires after a few minutes. Accept, decline or negotiate an offer from anywhere. A handover completes only while the car is parked and not in a police pursuit. The app shows the asking price, offers and sale result as estimated profit, loss or break-even after recorded identity and repaint costs. It marks old cases with incomplete expense history as **partial costs**; police fines are excluded from that estimate.
+In **Underground**, set an asking price and choose **List for sale** once the identity job is done. Up to four buyer offers can wait at once; each expires after a few minutes. Accept, decline or negotiate an offer from anywhere. A handover completes only while the car is parked and not in a police pursuit. The app shows the asking price, offers and sale result as estimated profit, loss or break-even after recorded identity, paint, parts, tuning and repair costs. Repair refunds reduce the recorded repair cost. Older cases recover vehicle-linked payments found in RLS's financial history, but retain **partial costs** when earlier spending cannot be proven; police fines and insurance fees are excluded.
 
 ### Alternatives and multiple cases
 
@@ -155,6 +155,7 @@ Theft milestones appear with RLS's general milestones and pay money when claimed
 - **Taking a taxi** pays the driver's cash at once, $60–$240 in steps of $5, and you keep it whatever becomes of the car. A taxi is a commercial vehicle: the pursuit starts at RLS wanted level 3 (every unit, roadblocks) instead of 1, and so does every later pursuit of that car, whether a patrol spots it or recognizes its paint.
 - **Taking a parked vehicle** goes unnoticed for 90–180 seconds if you match every signal cleanly. Each missed signal trips the alarm and shortens that time. Two or more nearby traffic vehicles act as witnesses and shorten it further.
 - Once a vehicle is reported, a patrol that spots it starts an RLS pursuit and refreshes its hot period. How close the patrol has to be depends on heat: about 160 m while Hot, 100 m while Warm and 60 m once Cold. After you evade a pursuit, patrols ignore the vehicle for 45 seconds.
+- **Getting out during a pursuit does not end it.** The police stay after you on foot and the car you carry stays where it is, so it can not be stored, stripped or left behind until you lose them. An arrest on foot counts like an arrest in the car.
 - A new identity hides the plate, not the paint. If the vehicle still has the colour it had when you stored it, each new patrol that sees you driving it (within the same heat-based range) has a 30% chance to recognize it and start a pursuit, half that once the report is Cold. The underground handover has a 20% chance to be raided, which seizes the vehicle and charges the theft fine. The Underground app marks such a vehicle as risky and shows the current raid chance.
 - **Holding several cars raises the heat.** Each case you already have open makes the next report come in about 35% sooner, and raises the chance that a patrol recognizes an unrepainted car or that a handover is raided by 15% per extra case.
 - **Camera fines** (speed and red-light cameras) are not charged to you while you drive the stolen car with its original plate; they go to the registered owner. Once the identity change is done, the car is yours and RLS charges them normally.
@@ -200,7 +201,7 @@ The mod wraps selected RLS functions for stolen-car title transfers, garage and 
 
 ### In-game validation
 
-Version 0.10.0 has been played in BeamNG 0.40.6 with RLS 2.8.1: theft, ignition bypass, garage storage, identity changes, Underground sales, the Vehicle Theft skill and perks, and theft milestones. Custody was played on West Coast, including a patrol arrest, seizure of other stolen cars, the private lawyer, resuming after closing the game and a multi-day sentence. RLS's daily economy systems behaved as expected during the time skip. The mod ships no automated regression tests.
+Version 0.10.0 was played in BeamNG 0.40.6 with RLS 2.8.1: theft, ignition bypass, garage storage, identity changes, Underground sales, the Vehicle Theft skill and perks, and theft milestones. Custody was played on West Coast, including a patrol arrest, seizure of other stolen cars, the private lawyer, resuming after closing the game and a multi-day sentence. RLS's daily economy systems behaved as expected during the time skip. The owner later confirmed the revised ignition minigame and value-based difficulty in-game. Focused Lua checks are in `tests/ignition_value.lua` and `tests/expenses.lua`; the expense tracking and the 0.11.0 fixes (including pursuits on foot) still need live game validation.
 
 ## Troubleshooting
 
@@ -217,29 +218,29 @@ This mod is released under the [MIT License](LICENSE). The license covers this m
 
 ## Changes
 
-### 0.10.0
+### 0.11.0
 
-This release adds arrest and custody: a theft arrest now takes you to the police station, the police search for your other stolen cars, a court sets a sentence and a lawyer can lower it, and the game clock moves forward while you serve it. Saves from 0.9.6 load without any action.
+This release adds ignition difficulty that depends on the car's value, a full cost estimate in the Underground app, and fixes a police pursuit that was lost when you got out of the stolen car, plus several multi-case bugs. Saves from 0.10.0 load without any action.
 
 **Added**
-- **Custody after a theft arrest.** When a patrol identifies a stolen car or undercover units catch the seller of a sting, the screen goes black with BUSTED, you are put on foot and taken to the police station: the Belasco station's reception hall on West Coast, the nearest garage on maps without a station on record. RLS still charges its own arrest fine. An arrest of a fully disguised car stays an ordinary RLS arrest.
-- **The police search.** The arrested car and every other open case the police can still link to a theft report are seized, wherever the car is: carried, stored, in the workshop, being stripped or listed in the Underground app. Its listing and offers go with it. A car with a new plate and a new colour is not linked and stays yours, listing included. Cars you own legally are never touched. Open test-drive investigations are closed into the same sentence.
-- **Sentencing and your lawyer.** A sentencing screen lists each seized car with its theft fine. The sentence is in game hours: 6 for a street car, 10 for a dealership car, 12 for a test drive, at least 18 for a taxi, more for recent arrests, police evades and a sting, plus half the base of every other seized car, at most 72 hours.
-  - The public defender is free and leaves the sentence and fines as they are.
-  - A private lawyer halves the sentence and cuts the fines by 30%. The fee (15% of the fines plus $75 per hour, at least $1,500) is paid up front and needs the money in hand.
-- **Serving the sentence.** A few seconds of black screen, while the game clock moves forward by the sentence, over several days if needed (through RLS's dynamic weather; without it only the time of day moves). The mod's own timers move with it: heat cools, workshop jobs finish, offers expire. Then you are released with a message stating the time served and what you paid.
-- Console helpers: `rlsVehicleTheft.debugCustody()` runs custody for an imaginary car without searching your real ones, and `rlsVehicleTheft.debugPosition()` prints where you stand as a station entry for `config.lua`.
+- **Ignition security by car value.** Cars worth up to $15,000 have basic security (29 seconds, wider and slower signals), up to $60,000 standard (25 seconds), and above that advanced (23 seconds, narrower and faster signals). Street cars use their configuration's catalog value, dealership cars their listing value; an unreadable value uses standard. The middle circuit now sweeps from the other side, and each new target is at least four track units from the previous one. The screen shows the security level and the alarm misses.
+- **Full cost estimate.** The Underground app's profit estimate now also counts paint, parts, tuning and repair spending on the car (repair refunds are taken back out). Older cases recover payments linked to their vehicle from RLS's financial history and keep the **partial costs** label when earlier spending cannot be proven. Police fines and insurance fees are still excluded.
+- Focused Lua checks in `tests/ignition_value.lua` and `tests/expenses.lua`.
 
-**Changed**
-- The theft fine of an arrest is charged at sentencing instead of with the seizure, so the lawyer can lower it, and it is charged once. Seizures without an arrest (a handover raid, a failed title transfer) charge it at once, as before.
-- During custody the take/store key, the Underground app's actions and the garage computer's theft rows do nothing.
-- Custody is saved at every step. Closing the game during it is safe: it continues where it stopped the next time you load the profile, and no car is seized or fine charged twice.
+**Fixed**
+- **Getting out during a pursuit.** RLS moves the pursuit from the car to the player on foot, so the mod saw the stolen car as not chased: it could be deleted as abandoned, stored or stripped with the police on you, and an arrest or escape on foot was not counted. A pursuit on you counts for the stolen car you carry. An arrest on foot starts custody, an escape counts as an evade, and the car stays until the pursuit is over.
+- **A stored car borrowed the carried car's pursuit.** With one car in the garage and a second one being driven, the stored car's report and heat were applied to the car you were driving, so a patrol could reset the stored car's heat.
+- **A car already taken away to be stripped is no longer seized** in the police search or fined again.
+- **A flagged-down car stayed frozen** when the ignition probe found it unavailable before the bypass started. It is released and you are told.
+- **The take/store key could stay dead** if the Underground app was open during a level or profile change.
+- **Traffic top-up.** The stolen car being put back into traffic is no longer counted as its replacement joining the road.
+- **Vehicle Theft level.** An unreadable skill file no longer pins the level at 1 for the whole session.
 
 **Tested**
-- Version 0.10.0 was played on West Coast with BeamNG 0.40.6 and RLS 2.8.1. In-game checks covered the BUSTED screen, station transfer, seizure of other stolen cars, sentencing, the private lawyer, release, resuming after the game was closed, and a multi-day sentence. RLS's daily economy systems (loans, rent and business income) behaved as expected during the time skip. The theft-to-sale flow, Vehicle Theft skill and perks, and theft milestones were also checked in-game with RLS 2.8.1. The mod does not ship automated regression tests.
+- The revised ignition minigame and value-based difficulty were confirmed in-game by the owner. The two Lua checks pass. The expense tracking and the fixes above, including the pursuit on foot, have not been played in-game yet.
 
-**Upgrading from 0.9.6**
-- Remove `rls_vehicle_theft_0.9.6.zip` (or any older version) from your `mods` folder before adding 0.10.0. Saves load without any action.
+**Upgrading from 0.10.0**
+- Remove `rls_vehicle_theft_0.10.0.zip` (or any older version) from your `mods` folder before adding 0.11.0. Saves load without any action.
 
 ### Older releases
 

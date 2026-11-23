@@ -80,7 +80,8 @@ return function(ctx)
       vehicle.hot = heat.stage == "hot"
       vehicle.handoverBlocked = handoverBlocked(case)
     end
-    vehicle.expenses, vehicle.expensesPartial, vehicle.expensesIdentity, vehicle.expensesPaint = expensesFor(case)
+    vehicle.expenses, vehicle.expensesPartial, vehicle.expensesIdentity, vehicle.expensesPaint,
+      vehicle.expensesParts, vehicle.expensesTuning, vehicle.expensesRepair = expensesFor(case)
     if case.listing then
       vehicle.listedPrice = case.listing.price
       vehicle.nextOfferIn = case.listing.nextOfferAt and math.max(0, case.listing.nextOfferAt - now) or nil

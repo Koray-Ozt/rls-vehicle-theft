@@ -8,7 +8,7 @@ return function(ctx)
   local chopRates, chopSeconds, scrapRoute, workshopChannel =
     config.chopRates, config.chopSeconds, config.scrapRoute, config.workshopChannel
   -- From the other parts; bound by the function this file returns once every part is installed.
-  local charge, count, currentValue, drivenOutOfGarage, exitVehicle, findCase, gameTime, grantXp, heatStatus, inCustody,
+  local carChased, charge, count, currentValue, drivenOutOfGarage, exitVehicle, findCase, gameTime, grantXp, heatStatus, inCustody,
     inventory, load, money, notify, notifyPhone, openInvestigation, ownedGarageNear, perk, removeCase, repainted,
     save, underSting, vehicleCase
 
@@ -148,8 +148,7 @@ return function(ctx)
     local case = findCase(dialog.serial)
     local vehicle = session.liveId and getObjectByID(session.liveId)
     if not case or case.phase ~= "transit" or not vehicle then return end
-    local pursuit = overhaul_integration_services_police.getPursuitData(session.liveId)
-    if pursuit and (pursuit.mode or 0) ~= 0 then
+    if carChased(session.liveId) then
       notify("Lose the police before selling the car for parts.")
     elseif not ownedGarageNear(vehicle) then
       notify("Drive into a garage you own.")
@@ -265,6 +264,7 @@ return function(ctx)
   ctx.updateIdentity = updateIdentity
 
   return function()
+    carChased = ctx.carChased
     charge = ctx.charge
     count = ctx.count
     currentValue = ctx.currentValue

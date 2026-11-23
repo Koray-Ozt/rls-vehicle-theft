@@ -467,7 +467,9 @@ return function(ctx)
     end
     local counts = {countFor(case, true, sting)}
     for _, other in ipairs(session.state.cases) do
-      if other ~= case and not disguised(other) and not (other.seizure and not other.fineDeferred) then
+      -- A car the crew already took away to strip (chopping, no inventory record) is gone: nothing to seize.
+      local gone = other.phase == "chopping" and not other.inventoryId
+      if other ~= case and not gone and not disguised(other) and not (other.seizure and not other.fineDeferred) then
         counts[#counts + 1] = countFor(other)
       end
     end

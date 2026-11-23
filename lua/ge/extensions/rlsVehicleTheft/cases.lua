@@ -4,6 +4,7 @@
 return function(ctx)
   local session = ctx.session
   local config = ctx.config
+  local expenseKind = require("rlsVehicleTheft/expenseKind")
   local abandonDistance, heatHotSeconds, heatMultipliers, heatWarmSeconds =
     config.abandonDistance, config.heatHotSeconds, config.heatMultipliers, config.heatWarmSeconds
   -- From the other parts; bound by the function this file returns once every part is installed.
@@ -55,6 +56,32 @@ return function(ctx)
     for _, case in ipairs(session.state and session.state.cases or {}) do
       if vehId and caseVehicleId(case) == vehId then return case end
     end
+  end
+
+  -- RLS moves a pursuit from the car to the player's walking avatar when the player gets out
+  -- (police.lua onVehicleSwitched), so the carried car itself reads "not chased" while the police are
+  -- still after its thief. A pursuit event on the walking player therefore belongs to the transit case.
+  local function walkerId()
+    if gameplay_walk and gameplay_walk.isWalking() then return be:getPlayerVehicleID(0) end
+  end
+
+  -- The case a pursuit event (arrest or evade) of vehicle id is about.
+  local function caseForPursuit(id)
+    local case = caseForVehicle(id)
+    if case then return case end
+    local carried = transitCase()
+    if carried and session.liveId and id == walkerId() then return carried end
+  end
+
+  -- True while the police are after the car with this id, or after the player who got out of it.
+  local function carChased(vehId)
+    local police = overhaul_integration_services_police
+    if not police or not vehId then return false end
+    local function active(id)
+      local pursuit = id and police.getPursuitData(id)
+      return pursuit ~= nil and (pursuit.mode or 0) ~= 0
+    end
+    return active(vehId) or active(walkerId())
   end
 
   -- Each extra open case keeps more police attention on you.
@@ -183,15 +210,41 @@ return function(ctx)
     return math.max(0, tonumber(overhaul_career_market_valueCalculator.getInventoryVehicleSellValue(case.inventoryId)) or 0)
   end
 
-  -- Expenses recorded for this car (identity fee and RLS repaint charges) and whether the total is
-  -- incomplete: a car whose identity was changed, or that was repainted, before this tracking existed has
-  -- no record, so it is flagged as partial instead of showing a falsely precise figure. Police fines are
-  -- not trade expenses and are left out.
-  local function expensesFor(case)
+  -- The player's recorded spending on this car. Older cases have no tracking marker, because their earlier
+  -- parts/paint/repair costs may be incomplete. Reconcile rows with an exact vehicle id from RLS's saved
+  -- financial history once, without adding them twice to amounts already recorded by this mod.
+  local function backfillExpenses(case)
     local spent = case.expenses or {}
-    local identity, paint = tonumber(spent.identity), tonumber(spent.paint)
-    local partial = (case.identity ~= nil and identity == nil) or (repainted(case) == true and paint == nil)
-    return (identity or 0) + (paint or 0), partial, identity or 0, paint or 0
+    if spent.tracking == 1 or spent.ledgerBackfilled or not case.inventoryId then return end
+    local attributes = overhaul_career_economy_playerAttributes
+    local rows = attributes and attributes.getAttributeLog and attributes.getAttributeLog()
+    if type(rows) ~= "table" then return end
+    local totals = {paint = 0, parts = 0, tuning = 0, repair = 0}
+    for _, row in ipairs(rows) do
+      local finance = type(row) == "table" and row.finance
+      if type(finance) == "table" and tonumber(finance.vehicleId) == tonumber(case.inventoryId) then
+        local amount = row.attributeChange and tonumber(row.attributeChange.money)
+        local kind = expenseKind(row.reason, amount)
+        if kind then totals[kind] = totals[kind] - amount end
+      end
+    end
+    for kind, total in pairs(totals) do
+      total = math.max(0, total)
+      if total > (tonumber(spent[kind]) or 0) then spent[kind] = total end
+    end
+    spent.ledgerBackfilled = true
+    case.expenses = spent
+  end
+
+  -- Police fines and insurance fees are not trade expenses.
+  local function expensesFor(case)
+    backfillExpenses(case)
+    local spent = case.expenses or {}
+    local identity, paint, parts, tuning, repair = tonumber(spent.identity), tonumber(spent.paint),
+      tonumber(spent.parts), tonumber(spent.tuning), tonumber(spent.repair)
+    local partial = spent.tracking ~= 1
+    return (identity or 0) + (paint or 0) + (parts or 0) + (tuning or 0) + (repair or 0),
+      partial, identity or 0, paint or 0, parts or 0, tuning or 0, repair or 0
   end
 
   -- Abandoning: walk away from a stolen car you have not stored. Beyond this distance, with no pursuit on
@@ -203,8 +256,7 @@ return function(ctx)
     local vehicle = getObjectByID(session.liveId)
     local player = walkingPlayer()
     if not vehicle or not player or distance(vehicle, player) < abandonDistance then return false end
-    local pursuit = overhaul_integration_services_police.getPursuitData(session.liveId)
-    if pursuit and (pursuit.mode or 0) ~= 0 then return false end
+    if carChased(session.liveId) then return false end
     local reported = case.reported or gameTime() >= (case.reportAt or 0)
     vehicle:delete()
     local investigated = openInvestigation(case)
@@ -262,6 +314,8 @@ return function(ctx)
   end
 
   ctx.baseColor = baseColor
+  ctx.carChased = carChased
+  ctx.caseForPursuit = caseForPursuit
   ctx.caseForVehicle = caseForVehicle
   ctx.caseLimit = caseLimit
   ctx.caseVehicleId = caseVehicleId

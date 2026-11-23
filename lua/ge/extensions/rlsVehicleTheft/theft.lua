@@ -11,7 +11,7 @@ return function(ctx)
   local accessDistance, availableStreetCar, bindRls, caseLimit, checkIgnition, enterAsDriver, forceStop,
     forgetForcedStop, gameTime, ignitionBusy, ignitionCoolingDown, inspectedDealer, keyLabel, load, money,
     notify, parkedCars, perk, releaseForcedStop, releaseStreetCar, replaceProp, save, store, streetReportDelay,
-    transitCase, walkingPlayer
+    streetVehicleValue, transitCase, walkingPlayer
 
   -- reward: the XP and theft counters this theft earns ({xp, label, clean, carjacked}). They are paid when the
   -- car is stored, so a car that is ditched or seized before storage earns nothing.
@@ -29,7 +29,8 @@ return function(ctx)
       reportAt = reportAt, heatHotUntil = reportAt + heatHotSeconds,
       heatWarmUntil = reportAt + heatHotSeconds + heatWarmSeconds, phase = "transit", immediate = immediate or nil,
       reported = immediate and true or nil,
-      reward = reward, taxi = taxi or nil, wanted = taxi and taxiTheft.wantedLevel or nil})
+      reward = reward, taxi = taxi or nil, wanted = taxi and taxiTheft.wantedLevel or nil,
+      expenses = {tracking = 1}})
     local cash = taxi and math.random(math.floor(taxiTheft.cashMin / 5), math.floor(taxiTheft.cashMax / 5)) * 5
     if cash then
       overhaul_career_economy_payment.reward({money = {amount = cash}},
@@ -95,7 +96,7 @@ return function(ctx)
       local activeDrive = drive.isActive() == true
       if activeDrive and player:getID() ~= info.vehId then return end
       if not activeDrive and not gameplay_walk.isWalking() and player:getID() ~= info.vehId then return end
-      checkIgnition(target, seller, activeDrive, function(vehicle, result)
+      checkIgnition(target, seller, activeDrive, info.value, function(vehicle, result)
         local delay = activeDrive and (drive.getTimeLeft() or 75) or 6
         if activeDrive then
           drive.resetData()
@@ -151,7 +152,7 @@ return function(ctx)
     session.attempted.remaining = session.attempted.remaining - dt
     if session.attempted.remaining > 0 then return end
     session.attempted = nil
-    checkIgnition(target, nil, false, function(vehicle, result)
+    checkIgnition(target, nil, false, streetVehicleValue(target), function(vehicle, result)
       local fromTraffic = not parkedCars()[vehicle:getID()]
       -- Read before the car leaves traffic, which drops its taxi flag. A cab always has its driver at the
       -- wheel, so it is reported at once, like any carjacking.
@@ -177,7 +178,11 @@ return function(ctx)
       -- A carjacked car may still be rolling when the player takes the wheel. Switch the AI off again now that
       -- the player is seated, so no leftover AI mode or parking brake keeps the player from steering it (#10).
       if fromTraffic then vehicle:queueLuaCommand('ai.setMode("disabled")') end
-      if not gameplay_traffic.getTrafficData()[id] then gameplay_traffic.insertTraffic(id, true, true) end
+      if not gameplay_traffic.getTrafficData()[id] then
+        -- Not a replacement car joining the road: traffic.lua must not clear its pending spawn for it.
+        session.ignoreTrafficAdd = id
+        gameplay_traffic.insertTraffic(id, true, true)
+      end
       local clean = not result.skipped and result.misses == 0
       begin(vehicle, "street", nil, 0, delay, nil, result.skipped or taxi, {
         xp = result.skipped and 12 or clean and 20 or 15, label = taxi and "Taxi theft" or "Vehicle theft",
@@ -213,6 +218,7 @@ return function(ctx)
     save = ctx.save
     store = ctx.store
     streetReportDelay = ctx.streetReportDelay
+    streetVehicleValue = ctx.streetVehicleValue
     transitCase = ctx.transitCase
     walkingPlayer = ctx.walkingPlayer
   end

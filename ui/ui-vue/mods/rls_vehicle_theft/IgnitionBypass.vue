@@ -4,7 +4,8 @@
       <header class="ignition-header">
         <div>
           <h1 id="ignition-title">Ignition bypass</h1>
-          <p>Match three signals to start the engine.</p>
+          <p>Connect three circuits to start the engine.</p>
+          <p v-if="state" class="security-level">{{ state.difficulty }}</p>
         </div>
         <div v-if="state" class="timer" :class="{ urgent: state.remaining <= 5 }">
           <span>TIME LEFT</span>
@@ -17,13 +18,18 @@
           <div :style="{ width: percentage(state.remaining / state.duration) }"></div>
         </div>
 
-        <div class="signal-count">
-          <span>Signals matched</span>
-          <strong>{{ state.matched }} / {{ state.stages }}</strong>
+        <div class="stage-heading">
+          <div>
+            <span class="stage-count">CIRCUIT {{ state.matched + 1 }} / {{ state.stages }}</span>
+            <strong>{{ stageTitle }}</strong>
+          </div>
+          <span class="sweep-direction">{{ state.matched === 1 ? "← SWEEP" : "SWEEP →" }}</span>
         </div>
-        <div class="signal-steps" aria-hidden="true">
+        <div class="signal-steps" aria-label="Circuit progress">
           <span v-for="step in state.stages" :key="step"
-            :class="{ matched: step <= state.matched, current: step === state.matched + 1 }"></span>
+            :class="{ matched: step <= state.matched, current: step === state.matched + 1 }">
+            <b>{{ step <= state.matched ? "✓" : step }}</b>{{ stageTitles[step - 1] }}
+          </span>
         </div>
 
         <div class="signal-track" :class="{ aligned: state.inTarget && state.started }"
@@ -35,6 +41,8 @@
           <span><i class="legend-marker"></i> Moving marker</span>
           <span><i class="legend-target"></i> Target zone</span>
         </div>
+
+        <p v-if="state.misses" class="alarm-status">Alarm tripped · {{ state.misses }} {{ state.misses === 1 ? "miss" : "misses" }}</p>
 
         <p class="instruction" :class="{
           missed: state.missed,
@@ -68,6 +76,7 @@ const { api, events } = useBridge()
 const state = shallowRef(null)
 const unavailable = shallowRef(false)
 const eventName = "RlsTheftIgnitionState"
+const stageTitles = ["Power feed", "Ignition circuit", "Starter relay"]
 let mounted = false
 
 const percentage = value => `${Math.max(0, Math.min(1, value)) * 100}%`
@@ -78,13 +87,15 @@ const trackStyle = computed(() => ({
   "--target-width": percentage(state.value.width),
 }))
 
+const stageTitle = computed(() => stageTitles[state.value.matched] || "Ignition circuit")
+
 const instruction = computed(() => {
   const attempt = state.value
-  if (!attempt.started) return "Press Lock signal (or Space) when the white marker is in the green zone. A miss costs time. The timer starts when you click Begin."
-  if (attempt.missed) return `Missed. −${attempt.penalty} s. Try again.`
-  if (attempt.feedback) return "Signal matched."
-  if (attempt.inTarget) return "In range. Lock the signal now."
-  return "Wait for the white marker to enter the green zone."
+  if (!attempt.started) return "Press Begin to start. Lock each circuit when the white marker crosses the green zone."
+  if (attempt.missed) return `Missed. −${attempt.penalty} s. The alarm stays tripped if you retry.`
+  if (attempt.feedback) return "Circuit matched. Get ready for the next sweep."
+  if (attempt.inTarget) return "In range. Lock the circuit now."
+  return "Follow the marker and lock it inside the green zone."
 })
 
 function applyState(next) {
@@ -106,7 +117,8 @@ function primaryAction() {
 }
 
 function onKeyDown(event) {
-  if (event.repeat || (event.code !== "Space" && event.code !== "Enter")) return
+  if (event.repeat || event.defaultPrevented || (event.code !== "Space" && event.code !== "Enter")) return
+  if (event.target?.closest?.("button")) return
   event.preventDefault()
   primaryAction()
 }
@@ -180,6 +192,14 @@ p {
   line-height: 1.4;
 }
 
+.security-level {
+  color: #f9ab69;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 .timer {
   flex: none;
   display: grid;
@@ -212,27 +232,61 @@ p {
   background: #f79040;
 }
 
-.signal-count {
+.stage-heading {
   display: flex;
   justify-content: space-between;
-  font-size: 0.88rem;
+  align-items: end;
+  gap: 0.5rem;
 }
 
+.stage-heading > div { display: grid; gap: 0.2rem; }
+.stage-heading strong { font-size: 1.06rem; }
+
+.stage-count, .sweep-direction {
+  color: #b5bfca;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+}
+
+.sweep-direction { white-space: nowrap; }
+
 .signal-steps {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.35rem;
-  margin-top: 0.45rem;
+  margin-top: 0.7rem;
 }
 
 .signal-steps > span {
-  flex: 1;
-  height: 0.28rem;
-  border-radius: 0.2rem;
-  background: #414a53;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+  padding: 0.45rem;
+  border: 1px solid #414a53;
+  border-radius: 0.35rem;
+  color: #aeb9c4;
+  font-size: 0.73rem;
+  line-height: 1.2;
 }
 
-.signal-steps .matched { background: #66e6a7; }
-.signal-steps .current { background: #f79040; }
+.signal-steps b {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 1.2rem;
+  height: 1.2rem;
+  border-radius: 50%;
+  background: #414a53;
+  color: #f2f5f7;
+  font-size: 0.68rem;
+}
+
+.signal-steps .matched { border-color: #4d8067; color: #a3eac2; }
+.signal-steps .matched b { background: #2c805b; }
+.signal-steps .current { border-color: #f79040; color: #fff; }
+.signal-steps .current b { background: #b45e23; }
 
 .signal-track {
   position: relative;
@@ -288,6 +342,12 @@ p {
 .legend-marker { background: #fff; }
 .legend-target { background: #66e6a7; }
 
+.alarm-status {
+  color: #ffab9c;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
 .instruction {
   min-height: 2.8em;
   margin: 1rem 0 0.65rem;
@@ -312,4 +372,8 @@ p {
 }
 
 .ignition-actions .primary { flex: 1; }
+
+@media (max-width: 30rem) {
+  .signal-steps > span { flex-direction: column; align-items: start; }
+}
 </style>
